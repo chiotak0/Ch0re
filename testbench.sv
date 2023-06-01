@@ -15,15 +15,18 @@ module testbench();
 
     initial begin
         clk = 1'b0;
-        rst_ = 1'b1;
-
         forever #(CLOCK_PERIOD / 2) clk = ~clk;
     end
 
-    pipeline_5st pl5st(
+    pipeline_5st #(
+        .IMEM_DEPTH(16),
+        .IMEM_FILE("code/example0/example0.imem.dat")
+    ) dut (
         .clk(clk),
         .rst_(rst_)
     );
+
+    tb_pipeline_5st tb_pl5st(.*);
 
 endmodule : testbench
 

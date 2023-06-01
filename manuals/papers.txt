@@ -1,0 +1,4 @@
+Memory Consistency and Event Ordering in Scalable Shared-Memory Multiprocessors [Gharachorloo, K., Lenoski, D., Laudon, J., Gibbons, P., Gupta, A., & Hennessy, J. (1990)]
+Speculative lock elision: enabling highly concurrent multithreaded execution [Rajwar, R., & Goodman, J. R. (2001)]
+Energy-Efficient Register Access [Tseng, J., & Asanović, K. (2000)]
+

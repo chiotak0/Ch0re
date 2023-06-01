@@ -47,6 +47,9 @@ module mem_sync_sp(mem_sync_sp_intf intf);
 				mem[i] = 0;
 			end
 		end
+
+		intf.i_wdata = 'z;
+		intf.i_wen = '0;
 	end
 
 endmodule

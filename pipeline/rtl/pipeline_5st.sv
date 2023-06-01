@@ -6,61 +6,54 @@
  *  RV64IC      []
  *  forwarding  []
  *  bypassing   []
+ *  exceptions  []
  */
 
-// `include "memory_models/regfile_2r1w/regfile_2r1w.sv"
+/* Exceptions:
+ * instruction-address-misaligned (IALIGH=32)
+ */
+
+typedef enum logic [6 : 0] {
+    //1
+} opdec;
+
+`include "memory_models/regfile_2r1w/regfile_2r1w.sv"  /// TODO: will be removed upon 'release'
 `include "memory_models/mem_sync_sp/mem_sync_sp.sv"
 
 module pipeline_5st #(
-    parameter REG_DATA_WIDTH = 64,
     parameter IMEM_DEPTH = 2048,
     parameter IMEM_ADDR_WIDTH = $clog2(IMEM_DEPTH),
-    parameter IMEM_DATA_WIDTH = 32
+    parameter IMEM_DATA_WIDTH = 32,
+    parameter IMEM_FILE = "codemem.dat"
 ) (
     input logic clk,
     input logic rst_
 );
-    localparam IMEM_DATA_BYTES = IMEM_DATA_WIDTH / 8;  // Verilatoor has problem with 'localparam'
     localparam REG_PC_FIRST_LEGAL_ADDRESS = 64'b0;
     localparam REG_FILE_SIZE = 32;
     localparam REG_ADDR_WIDTH = $clog2(REG_FILE_SIZE);
 
-    logic [IMEM_ADDR_WIDTH - 1 : 0] im_addr;  // connect with REG_PC (where to define REG_PC)
-    logic [IMEM_DATA_WIDTH - 1 : 0] im_wdata;
-    logic [IMEM_DATA_BYTES - 1 : 0] im_wen;
-    logic [IMEM_DATA_WIDTH - 1 : 0] im_rdata;
-
-    logic [/* rf_intf. */REG_DATA_WIDTH - 1 : 0] REG_PC;
-
-    /**************************************/
-
-    logic [/* rf_intf. */REG_DATA_WIDTH - 1 : 0] REG_IFID;
-    // logic [REG_DATA_WIDTH - 1 : 0] REG_IDEX;
-    // logic [REG_DATA_WIDTH - 1 : 0] REG_EXMEM;
-    // logic [REG_DATA_WIDTH - 1 : 0] REG_MEMWB;
-
-    /* regfile_2r1w_intf rf_intf(.clk(clk));
-
-    regfile_2r1w regfile (
-        .clk(rf_intf.clk),
-        .i_raddr_a(rf_intf.i_raddr1),
-        .i_raddr_b(rf_intf.i_raddr2),
-        .i_wen(rf_intf.i_wen),
-        .i_waddr(rf_intf.i_waddr),
-        .i_wdata(rf_intf.i_wdata),
-
-        .o_rdata_a(rf_intf.o_rdata1),
-        .o_rdata_b(rf_intf.o_rdata2)
-    ); */
+    regfile_2r1w_intf #(
+        .DATA_WIDTH(64)
+    ) rf_intf 
+    (.clk(clk));
 
     mem_sync_sp_intf #(
-        .DEPTH(2048),
-        .DATA_WIDTH(32),
-        .INIT_FILE("codemem.hex")
+        .DEPTH(IMEM_DEPTH),
+        .DATA_WIDTH(IMEM_DATA_WIDTH),
+        .INIT_FILE(IMEM_FILE)
     ) imem_intf (
         .clk(clk)
     );
 
+    logic [63 : 0] REG_PC;
+    logic [95 : 0] REG_IFID;   // 32instr + 64npc
+    logic [228 : 0] REG_IDEX;  // 32imm + 64rs1 + 64rs2 + 64npc + 5rd = 229-bits
+
+    logic [rf_intf.DATA_WIDTH - 1 : 0] REG_EXMEM;  // 
+    logic [rf_intf.DATA_WIDTH - 1 : 0] REG_MEMWB;  //
+
+    regfile_2r1w regfile(rf_intf);
     mem_sync_sp imem (imem_intf);
 
 
@@ -71,24 +64,39 @@ module pipeline_5st #(
             REG_PC <= REG_PC_FIRST_LEGAL_ADDRESS;
         end
         else begin
-            REG_IFID[0 +: IMEM_DATA_WIDTH] <= im_rdata;
+            REG_IFID[0 +: IMEM_DATA_WIDTH] <= imem_intf.o_rdata;
+            REG_IFID[IMEM_DATA_WIDTH +: 64] <= REG_PC + 64'h4;
+            REG_PC <= REG_PC + 'h4;
+
+            /// TODO: add branch logic
         end
     end : stage_1_if_id
 
-    always_comb begin : wire_assignments
-        im_addr = REG_PC[0 +: IMEM_ADDR_WIDTH];
-    end : wire_assignments
+    always_comb begin
+        imem_intf.i_addr = REG_PC[0 +: IMEM_ADDR_WIDTH] >> 2;
+    end
 
 
     /* STAGE 2 (ID/EX) */
-    /* always_ff @(posedge clk) begin : stage_2_id_ex
+    always_ff @(posedge clk) begin : stage_2_id_ex
         if (!rst_) begin
             REG_IDEX <= 'b0;
         end
         else begin
-            REG_IDEX <= REG_IFID;
+
+            /// TODO: Imm logic
+
+            REG_IDEX[32 +: 64] <= rf_intf.o_rdata1; // rs1
+            REG_IDEX[96 +: 64] <= rf_intf.o_rdata2; // rs2
+            REG_IDEX[160 +: 64] <= REG_IFID[32 +: 64]; // npc
+            REG_IDEX[224 +: 5] <= REG_IFID[7 +: 5]; // rd
         end
-    end : stage_2_id_ex */
+    end : stage_2_id_ex
+
+    always_comb begin
+        rf_intf.i_raddr1 = REG_IFID[15 : 19];
+        rf_intf.i_raddr2 = REG_IFID[20 : 24];
+    end
 
 
     /* STAGE 3 (EX/MEM) */
