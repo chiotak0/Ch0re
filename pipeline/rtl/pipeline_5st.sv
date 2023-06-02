@@ -13,12 +13,7 @@
  * instruction-address-misaligned (IALIGH=32)
  */
 
-typedef enum logic [6 : 0] {
-    //1
-} opdec;
-
-`include "memory_models/regfile_2r1w/regfile_2r1w.sv"  /// TODO: will be removed upon 'release'
-`include "memory_models/mem_sync_sp/mem_sync_sp.sv"
+`define INSTR_I_FORMAT 
 
 module pipeline_5st #(
     parameter IMEM_DEPTH = 2048,
@@ -41,31 +36,59 @@ module pipeline_5st #(
     mem_sync_sp_intf #(
         .DEPTH(IMEM_DEPTH),
         .DATA_WIDTH(IMEM_DATA_WIDTH),
-        .INIT_FILE(IMEM_FILE)
+        .INIT_FILE(IMEM_FILE),
+        .INIT_START('h0)
+        // .INIT_END('h160 - 1)
     ) imem_intf (
         .clk(clk)
     );
 
     logic [63 : 0] REG_PC;
-    logic [95 : 0] REG_IFID;   // 32instr + 64npc
-    logic [228 : 0] REG_IDEX;  // 32imm + 64rs1 + 64rs2 + 64npc + 5rd = 229-bits
 
-    logic [rf_intf.DATA_WIDTH - 1 : 0] REG_EXMEM;  // 
-    logic [rf_intf.DATA_WIDTH - 1 : 0] REG_MEMWB;  //
+    logic [95 : 0] IFIDR;   // | 32instr | 64npc |
+    logic [31 : 0] IFIDR_INST;
+    logic [63 : 0] IFIDR_NPC;
+
+    logic [270 : 0] IDEXR;  // | 64imm | 64rs1 | 64rs2 | 64npc | 5rd | 10func |: 271-bits
+    logic [63 : 0] IDEXR_IMM;
+    logic [63 : 0] IDEXR_RS1;
+    logic [63 : 0] IDEXR_RS2;
+    logic [63 : 0] IDEXR_NPC;
+    logic [9 : 0] IDEXR_FUNC;
+    logic [4 : 0] IDEXR_RD;
+
+    logic [100 : 0] EXMEMR;  // | 64res | 5rd | 1cond |
+    logic [63 : 0] EXMEMR_OUT;
+
+    logic [rf_intf.DATA_WIDTH - 1 : 0] MEMWBR;  //
 
     regfile_2r1w regfile(rf_intf);
     mem_sync_sp imem (imem_intf);
 
+    // addi x6, x0, 1| 12'h001 | rs1 5'b00000 | func3 3'b000 | rd 5'b00110 | op 7'b0010011 |
+    // addi x7, x0, 2| 12'h002 | rs1 5'b00000 | func3 3'b000 | rd 5'b00111 | op 7'b0010011 |
+
+    /** debug purposes **/
+
+    assign IFIDR_INST = IFIDR[31 : 0];
+    assign IFIDR_NPC = IFIDR[95 : 32];
+
+    assign IDEXR_IMM = IDEXR[0 +: 64];
+    assign IDEXR_RS1 = IDEXR[64 +: 64];
+    assign IDEXR_RS2 = IDEXR[128 +: 64];
+    assign IDEXR_NPC = IDEXR[192 +: 64];
+    assign IDEXR_RD = IDEXR[256 +: 5];
+    assign IDEXR_FUNC = IDEXR[261 +: 10];
 
     /* STAGE 1 (IF/ID) */
-    always_ff @(posedge clk) begin : stage_1_if_id
+    always_ff @(posedge clk, negedge rst_) begin : stage_1_if_id
         if (!rst_) begin
-            REG_IFID <= 'b0;
-            REG_PC <= REG_PC_FIRST_LEGAL_ADDRESS;
+            IFIDR <= 'b0;
+            REG_PC <= {{62{1'b1}}, 2'b00};
         end
         else begin
-            REG_IFID[0 +: IMEM_DATA_WIDTH] <= imem_intf.o_rdata;
-            REG_IFID[IMEM_DATA_WIDTH +: 64] <= REG_PC + 64'h4;
+            IFIDR[0 +: IMEM_DATA_WIDTH] <= imem_intf.o_rdata;
+            IFIDR[IMEM_DATA_WIDTH +: 64] <= REG_PC + 64'h4;
             REG_PC <= REG_PC + 'h4;
 
             /// TODO: add branch logic
@@ -80,32 +103,56 @@ module pipeline_5st #(
     /* STAGE 2 (ID/EX) */
     always_ff @(posedge clk) begin : stage_2_id_ex
         if (!rst_) begin
-            REG_IDEX <= 'b0;
+            IDEXR <= 'b0;
         end
         else begin
 
-            /// TODO: Imm logic
+            // extraction of immediate (+ sign-extension)
 
-            REG_IDEX[32 +: 64] <= rf_intf.o_rdata1; // rs1
-            REG_IDEX[96 +: 64] <= rf_intf.o_rdata2; // rs2
-            REG_IDEX[160 +: 64] <= REG_IFID[32 +: 64]; // npc
-            REG_IDEX[224 +: 5] <= REG_IFID[7 +: 5]; // rd
+            if (IFIDR[1 : 0] == 2'b11) begin
+                if (IFIDR[6 : 2] == 5'h00 || IFIDR[6 : 2] == 5'h04 ||
+                    IFIDR[6 : 2] == 5'h06 || IFIDR[6 : 2] == 5'h19
+                ) begin /* I-FORMAT */
+                    IDEXR[0 +: 64] <= {{52{IFIDR[31]}}, IFIDR[31 : 20]};
+                end
+                else if (IFIDR[6 : 2] == 5'h08) begin /* S-Type */
+                    IDEXR[0 +: 64] <= {{52{IFIDR[31]}}, IFIDR[31 : 25], IFIDR[11 : 7]};
+                end
+                else if (IFIDR[6 : 2] == 5'h0d) begin /* U-Type */
+                    IDEXR[0 +: 64] <= {IFIDR[31 : 12], {12'b0}};
+                end
+                else begin
+                    
+                end
+            end
+            else begin
+                // exception ?
+                IDEXR <= IDEXR;
+            end
+
+            IDEXR[64 +: 64] <= rf_intf.o_rdata1;   // rs1
+            IDEXR[128 +: 64] <= rf_intf.o_rdata2;  // rs2
+            IDEXR[192 +: 64] <= IFIDR[32 +: 64];   // npc
+            IDEXR[256 +: 5] <= IFIDR[7 +: 5];      // rd
+            IDEXR[261 +: 3] <= IFIDR[12 +: 3];     // func3
+            IDEXR[264 +: 7] <= IFIDR[25 +: 7];     // func7
+
         end
     end : stage_2_id_ex
 
     always_comb begin
-        rf_intf.i_raddr1 = REG_IFID[15 : 19];
-        rf_intf.i_raddr2 = REG_IFID[20 : 24];
+        rf_intf.i_raddr1 = IFIDR[19 : 15];
+        rf_intf.i_raddr2 = IFIDR[24 : 20];
     end
 
 
     /* STAGE 3 (EX/MEM) */
     /* always_ff @(posedge clk) begin : stage_3_ex_mem
         if (!rst_) begin
-            REG_EXMEM <= 'b0;
+            EXMEMR <= 'b0;
         end
         else begin
-            REG_EXMEM <= REG_IDEX;
+            EXMEMR <= IDEXR;
         end
     end : stage_3_ex_mem */
 
@@ -113,10 +160,10 @@ module pipeline_5st #(
     /* STAGE 4 (MEM/WB) */
     /* always_ff @(posedge clk) begin : stage_4_mem_wb
         if (!rst_) begin
-            REG_MEMWB <= 'b0;
+            MEMWBR <= 'b0;
         end
         else begin
-            REG_MEMWB <= REG_EXMEM;
+            MEMWBR <= EXMEMR;
         end
     end : stage_4_mem_wb */
 

@@ -19,11 +19,6 @@ interface regfile_2r1w_intf #(
 	logic [DATA_WIDTH - 1 : 0] o_rdata1;
 	logic [DATA_WIDTH - 1 : 0] o_rdata2;
 
-	clocking CBrf @(posedge clk);
-		output i_raddr1, i_raddr2, i_waddr, i_wdata, i_wen;
-		input o_rdata1, o_rdata2;
-	endclocking
-
 endinterface : regfile_2r1w_intf
 
 
@@ -51,6 +46,6 @@ module regfile_2r1w (regfile_2r1w_intf intf);
 		end
 	end
 
-endmodule
+endmodule : regfile_2r1w
 
 `endif /* REGFILE_2R1W_SV */

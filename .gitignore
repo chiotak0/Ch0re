@@ -1,7 +1,7 @@
 simv.daidir/
 csrc/
 code/
+riscv-opcodes/
 verdi_config_file
 ucli.key
 simv
-singal.rc

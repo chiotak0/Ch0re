@@ -52,6 +52,6 @@ module mem_sync_sp(mem_sync_sp_intf intf);
 		intf.i_wen = '0;
 	end
 
-endmodule
+endmodule : mem_sync_sp
 
 `endif /* CH0RE_MEM_SYNC_SP */

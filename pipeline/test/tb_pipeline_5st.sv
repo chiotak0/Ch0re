@@ -1,7 +1,7 @@
 `ifndef CH0RE_TEST_PIPELINE_5ST_SV
 `define CH0RE_TEST_PIPELINE_5ST_SV
 
-`include "pipeline/rtl/pipeline_5st.sv"
+// `include "pipeline/rtl/pipeline_5st.sv"
 
 program tb_pipeline_5st(
     input logic clk,
@@ -15,10 +15,12 @@ program tb_pipeline_5st(
         #1 rst_ = 1'b0;
 
         @(posedge clk);
-        @(posedge clk);
 
         #1 rst_ = 1'b1;
 
+        @(posedge clk);
+        @(posedge clk);
+        @(posedge clk);
         @(posedge clk);
         @(posedge clk);
         @(posedge clk);

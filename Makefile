@@ -1,15 +1,20 @@
 SHELL:=/bin/bash
 .ONESHELL:
 
-.PHONY: all clean
+.PHONY: all clean simgui simcli
 
-CFLAGS=-debug_access+r -sverilog -kdb -l comp.log
-DEPLIST=pipeline
+CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
+TESTBENCH=testbench.sv
+
+DEPLIST=memory_models/mem_sync_sp/mem_sync_sp.sv memory_models/regfile_2r1w/regfile_2r1w.sv
+DEPLIST+=pipeline/rtl/pipeline_5st.sv pipeline/test/tb_pipeline_5st.sv
+
+#DEPLIST=$(wordlist, 2, $(words $(DEPLIST_)), $(DEPLIST_))
 
 
 all: simv
 
-simv: $(DEPLIST)
+simv: $(TESTBENCH) $(DEPLIST)
 	@rm -f comp.log || true
 	@if [[ -z "$$(command -v vcs)" ]]; then\
 		printf "\033[1;31mvcs compiler not found!\033[0m\n";\
@@ -17,7 +22,7 @@ simv: $(DEPLIST)
 	fi
 	@printf "\033[33mmaking simulation...\033[0m\n"
 #
-	@vcs $(CFLAGS) $< > /dev/null 2>&1
+	@vcs $(CFLAGS) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
 #	
 	@if [[ $$? -eq 0 ]]; then\
 		printf "\033[1;32mSUCCESS\033[0m\n";\
@@ -26,8 +31,6 @@ simv: $(DEPLIST)
 		printf "\033[33mopening compiler logs...\033[0m\n";\
 		less comp.log
 	fi
-
-cntrlr: cntrl
 
 simgui: simv
 	./simv -gui

@@ -3,8 +3,6 @@
 
 `timescale 1ns/100ps
 
-`include "pipeline/rtl/pipeline_5st.sv"
-`include "pipeline/test/tb_pipeline_5st.sv"
 
 module testbench();
 
