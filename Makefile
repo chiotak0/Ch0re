@@ -3,10 +3,10 @@ SHELL:=/bin/bash
 
 .PHONY: all clean simgui simcli
 
-CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
+CFLAGS=-debug_access+r -sverilog -kdb -notice -warn lsh -comp.log
 TESTBENCH=testbench.sv
 
-DEPLIST=memory_models/mem_sync_sp/mem_sync_sp.sv memory_models/regfile_2r1w/regfile_2r1w.sv
+DEPLIST=types.svp memory_models/mem_sync_sp/mem_sync_sp.sv memory_models/regfile_2r1w/regfile_2r1w.sv
 DEPLIST+=pipeline/rtl/pipeline_5st.sv pipeline/test/tb_pipeline_5st.sv
 
 #DEPLIST=$(wordlist, 2, $(words $(DEPLIST_)), $(DEPLIST_))
