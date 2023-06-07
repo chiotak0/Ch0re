@@ -1,23 +1,24 @@
 import ch0re_types::*;
 
-module decoder_id (
-	input logic i_instr,
+
+module decoder (
+	input logic [31:0] i_instr,
 
 	output logic o_illegal_instr,
 
 	/* to Register File */
 
-	output logic o_rf_raddr1,
-	output logic o_rf_radd2,
-	output logic o_rf_waddr,
+	output logic [4:0] o_rf_raddr1,
+	output logic [4:0] o_rf_raddr2,
+	output logic [4:0] o_rf_waddr,
 
 	/* to ALU */
 
-	output [63:0] logic o_imm,
-	output iformat_e o_instr_format,
+	output logic [63:0] o_imm,
+	output iformat_e o_instr_format, /// TODO: remove!
 	output alu_op_e o_alu_op
-	output alu_mux1_sel o_alu_mux1_sel,
-	output alu_mux2_sel o_alu_mux2_sel,
+	output alu_mux1_sel_e o_alu_mux1_sel,
+	output alu_mux2_sel_e o_alu_mux2_sel,
 
 	/* to LSU */
 
@@ -29,27 +30,31 @@ module decoder_id (
 	/** Register Handling **/
 
 	assign instr = i_instr;
-	assign o_rs1 = instr[19:15];
-	assign o_rs2 = instr[24:20];
-	assign o_rd  = instr[11:7];
+	assign o_rf_raddr1 = instr[19:15];
+	assign o_rf_raddr2 = instr[24:20];
+	assign o_rf_waddr  = instr[11:7];
 
 	/** Decode + Instruction Check **/
 
 	opcode_e opcode = opcode_e'(instr[6:2]);
 
-	always_comb begin : decoder
+	always_comb begin : 32_bit_instruction_decoder
 
 		/* Only 32-bit instructions supported! */
 
 		if (instr[1:0] != 2'b11) begin
 			o_illegal_instr = 1'b1;
+
+			o_alu_mux1_sel = ALU_MUX1_SEL_REG;
+			o_alu_mux2_sel = ALU_MUX2_SEL_REG;
 			o_instr_format = 'b0;
 			o_alu_op = 'b0;
 			o_imm = 64'h0;
 		end
-		else begin : 32_bit_instruction
+		else begin
 
 			o_illegal_instr = 1'b0;
+
 			o_instr_format = IFORMAT_R;
 			o_alu_op = ALU_SLTU;
 			o_imm = 64'h0;
@@ -226,7 +231,7 @@ module decoder_id (
 					o_illegal_instr = (instr[14:12] == 3'h7) ? 1'b1 : 1'b0;
 					o_imm = {{52{instr[31]}}, instr[31:20]};
 
-				end : op_load  // [DONE]
+				end : op_load
 
 				OPCODE_STORE: begin : op_store
 
@@ -242,7 +247,7 @@ module decoder_id (
 					o_illegal_instr = (instr[14] == 1'b1) ? 1'b1 : 1'b0;
 					o_imm = {{52{instr[31]}}, instr[31:25], instr[11:7]};
 
-				end : op_store  // [DONE]
+				end : op_store
 
 				OPCODE_BRANCH: begin : op_branch
 
@@ -254,7 +259,7 @@ module decoder_id (
 					o_alu_op = {1'b0, instr[14:12]};
 
 					o_illegal_instr = (instr[14:12] == 3'h2 | instr[14:12] == 3'h3) ? 1'b1 : 1'b0;
-					o_imm = {{42{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
+					o_imm = {{52{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
 
 				end : op_branch
 
@@ -311,11 +316,11 @@ module decoder_id (
 
 				end : op_auipc
 
-				default: o_illegal_instr = 1'b1; // op_unknown
+				default: o_illegal_instr = 1'b1; // unknown
 
 			endcase
-		end : 32_bit_instruction
+		end
 
-	end : decoder
+	end : 32_bit_instruction_decoder
 
 endmodule : decoder

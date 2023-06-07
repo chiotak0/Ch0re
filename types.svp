@@ -63,12 +63,12 @@ package ch0re_types;
         ALU_MUX1_SEL_IMM,
         ALU_MUX1_SEL_FWD
         ALU_MUX1_SEL_PC,
-    } alu_mux1_sel;
+    } alu_mux1_sel_e;
 
     typedef enum logic {
         ALU_MUX2_SEL_REG,
         ALU_MUX2_SEL_IMM
-    } alu_mux2_sel;
+    } alu_mux2_sel_e;
 
 endpackage : ch0re_types_pkg
 
