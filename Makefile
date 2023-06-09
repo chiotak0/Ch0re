@@ -3,11 +3,12 @@ SHELL:=/bin/bash
 
 .PHONY: all clean simgui simcli
 
-CFLAGS=-debug_access+r -sverilog -kdb -notice -warn lsh -comp.log
-TESTBENCH=testbench.sv
-
-DEPLIST=types.svp memory_models/mem_sync_sp/mem_sync_sp.sv memory_models/regfile_2r1w/regfile_2r1w.sv
-DEPLIST+=pipeline/rtl/pipeline_5st.sv pipeline/test/tb_pipeline_5st.sv
+FILELIST=filelist.f
+CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
+TESTBENCH=pipeline/tb_pipeline_5st.sv
+PACKAGES=ch0re_types_pkg.sv
+DEPLIST=types.sv memory_models/mem_sync_sp/mem_sync_sp.sv memory_models/regfile_2r1w/regfile_2r1w.sv
+DEPLIST+=pipeline/pipeline_5st.sv
 
 #DEPLIST=$(wordlist, 2, $(words $(DEPLIST_)), $(DEPLIST_))
 
@@ -22,7 +23,7 @@ simv: $(TESTBENCH) $(DEPLIST)
 	fi
 	@printf "\033[33mmaking simulation...\033[0m\n"
 #
-	@vcs $(CFLAGS) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
+	@vcs -f $(FILELIST) $(CFLAGS) $(PACKAGES) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
 #	
 	@if [[ $$? -eq 0 ]]; then\
 		printf "\033[1;32mSUCCESS\033[0m\n";\

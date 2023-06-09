@@ -3,18 +3,21 @@ SHELL:=/bin/bash
 
 .PHONY: all clean simgui simcli
 
-CFLAGS=-debug_access+r -sverilog -kdb -notice -warn lsh -comp.log
-TESTBENCH=tb_decoder.sv
+CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
 
-DEPLIST=debug_prints.sv decoder.sv tb_decoder.sv
-#DEPLIST+=
+DUT=idecoder.sv
+TESTBENCH=tb_$(DUT)
+
+FILELIST=filelist.f
+DEPLIST=
+DEPLIST+=$(DUT)
 
 #DEPLIST=$(wordlist, 2, $(words $(DEPLIST_)), $(DEPLIST_))
 
 
 all: simv
 
-simv: $(TESTBENCH) $(DEPLIST)
+simv: $(PACKAGES) $(TESTBENCH) $(DEPLIST)
 	@rm -f comp.log || true
 	@if [[ -z "$$(command -v vcs)" ]]; then\
 		printf "\033[1;31mvcs compiler not found!\033[0m\n";\
@@ -22,7 +25,7 @@ simv: $(TESTBENCH) $(DEPLIST)
 	fi
 	@printf "\033[33mmaking simulation...\033[0m\n"
 #
-	@vcs $(CFLAGS) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
+	@vcs -f $(FILELIST) $(CFLAGS) $(PACKAGES) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
 #	
 	@if [[ $$? -eq 0 ]]; then\
 		printf "\033[1;32mSUCCESS\033[0m\n";\

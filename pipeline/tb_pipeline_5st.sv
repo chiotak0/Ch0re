@@ -1,7 +1,7 @@
-`ifndef CH0RE_TEST_PIPELINE_5ST_SV
-`define CH0RE_TEST_PIPELINE_5ST_SV
+`timescale 1ns/100ps
 
-// `include "pipeline/rtl/pipeline_5st.sv"
+`include "ch0re_types.sv"
+`include "debug_prints.sv"
 
 program tb_pipeline_5st(
     input logic clk,
@@ -30,4 +30,3 @@ program tb_pipeline_5st(
 
 endprogram: tb_pipeline_5st
 
-`endif /* CH0RE_TEST_PIPELINE_5ST_SV */

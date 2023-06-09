@@ -1,6 +1,3 @@
-`ifndef CH0RE_MEM_SYNC_SP
-`define CH0RE_MEM_SYNC_SP
-
 interface mem_sync_sp_intf #(
 	parameter DEPTH       = 2048,
 	parameter ADDR_WIDTH  = $clog2(DEPTH),
@@ -34,7 +31,7 @@ module mem_sync_sp(mem_sync_sp_intf intf);
 			end
 		end
 
-		intf.o_rdata = mem[intf.i_addr];
+		intf.o_rdata <= mem[intf.i_addr];
 	end
 
 	// initialize memory from file
@@ -54,4 +51,3 @@ module mem_sync_sp(mem_sync_sp_intf intf);
 
 endmodule : mem_sync_sp
 
-`endif /* CH0RE_MEM_SYNC_SP */
