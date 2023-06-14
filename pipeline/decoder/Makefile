@@ -8,6 +8,8 @@ CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
 DUT=idecoder.sv
 TESTBENCH=tb_$(DUT)
 
+PACKAGES=../../instruction/instruction.sv
+
 FILELIST=filelist.f
 DEPLIST=
 DEPLIST+=$(DUT)

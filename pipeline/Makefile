@@ -11,7 +11,8 @@ TESTBENCH=tb_$(DUT)
 
 FILELIST=filelist.f
 DEPLIST=../memory_models/mem_sync_sp/mem_sync_sp.sv ../memory_models/regfile_2r1w/regfile_2r1w.sv
-DEPLIST+=decoder/idecoder.sv
+DEPLIST+=../memory_models/mem_sync_sp_rvdmem.sv
+DEPLIST+=decoder/idecoder.sv alu/alu.sv
 DEPLIST+=$(DUT)
 
 #DEPLIST=$(wordlist, 2, $(words $(DEPLIST_)), $(DEPLIST_))

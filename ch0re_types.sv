@@ -47,6 +47,12 @@ typedef enum logic [3:0] {
     ALU_SLTU
 } alu_op_e;
 
+typedef enum logic [1:0] {
+    LSU_NONE,
+    LSU_LOAD,
+    LSU_STORE
+} lsu_op_e;
+
 typedef enum logic [2:0] {
     DTYPE_BYTE,
     DTYPE_HALF,
@@ -70,6 +76,43 @@ typedef enum logic {
     ALU_MUX2_SEL_IMM
 } alu_mux2_sel_e;
 
+typedef enum logic [4:0] {
+	REG_X0_ZERO  = 0,
+	REG_X1_RA    = 1,
+	REG_X2_SP    = 2,
+	REG_X3_GP    = 3,
+	REG_X4_TP    = 4,
+
+	REG_X10_A0   = 10,
+	REG_X11_A1   = 11,
+	REG_X12_A2   = 12,
+	REG_X13_A3   = 13,
+	REG_X14_A4   = 14,
+	REG_X15_A5   = 15,
+	REG_X16_A6   = 16,
+	REG_X17_A7   = 17,
+
+	REG_X8_S0_FP = 8,
+	REG_X9_S1    = 9,
+	REG_X18_S2   = 18,
+	REG_X19_S3   = 19,
+	REG_X20_S4   = 20,
+	REG_X21_S5   = 21,
+	REG_X22_S6   = 22,
+	REG_X23_S7   = 23,
+	REG_X24_S8   = 24,
+	REG_X25_S9   = 25,
+	REG_X26_S10  = 26,
+	REG_X27_S11  = 27,
+
+	REG_X5_T0    = 5,
+	REG_X6_T1    = 6,
+	REG_X7_T2    = 7,
+	REG_X28_T3   = 28,
+	REG_X29_T4   = 29,
+	REG_X30_T5   = 30,
+	REG_X31_T6   = 31
+} reg_e;
 
 `endif /* CH0RE_TYPES_SV */
 
