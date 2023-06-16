@@ -11,10 +11,10 @@ interface mem_sync_sp_rvdmem_intf #(
 	input wire clk
 );
 
-	logic [ADDR_WIDTH-1:0] intf.i_addr;
-	logic [DATA_WIDTH-1:0] intf.i_wdata;
-	logic [DATA_BYTES-1:0] intf.i_wen;
-	logic [DATA_WIDTH-1:0] intf.o_rdata;
+	logic [ADDR_WIDTH-1:0] i_addr;
+	logic [DATA_WIDTH-1:0] i_wdata;
+	logic [DATA_BYTES-1:0] i_wen;
+	logic [DATA_WIDTH-1:0] o_rdata;
 
 endinterface : mem_sync_sp_rvdmem_intf
 
@@ -24,8 +24,8 @@ module mem_sync_sp_rvdmem(mem_sync_sp_rvdmem_intf intf);
 //---------------------------------------------------------------------------//
 // CUSTOM CODE FOR RISCV SIMULATION
 function sim_control;
-	input[DATA_WIDTH-1:0] data;
-	input[ADDR_WIDTH-1:0] addr;
+	input[intf.DATA_WIDTH-1:0] data;
+	input[intf.ADDR_WIDTH-1:0] addr;
 	begin
 		if ( addr == 'h40 ) begin
 			$write("%c",data[7:0]);
@@ -43,13 +43,13 @@ function sim_control;
 	end
 endfunction
 
-logic [DATA_WIDTH-1:0] cycle = 0;
-always @(posedge clk) begin
+logic [intf.DATA_WIDTH-1:0] cycle = 0;
+always @(posedge intf.clk) begin
 	cycle <= cycle + 1;
 end
 
-function [DATA_WIDTH-1:0] sim_cycle;
-	input[ADDR_WIDTH-1:0] addr;
+function [intf.DATA_WIDTH-1:0] sim_cycle;
+	input[intf.ADDR_WIDTH-1:0] addr;
 	input rd;
 	begin
 		sim_cycle = 0;
@@ -64,20 +64,20 @@ endfunction
 
 //---------------------------------------------------------------------------//
 
-localparam ADDR_SIZE = $clog2(DEPTH);
-localparam ADDR_LOW  = $clog2(DATA_BYTES);
+localparam ADDR_SIZE = $clog2(intf.DEPTH);
+localparam ADDR_LOW  = $clog2(intf.DATA_BYTES);
 localparam ADDR_HIGH = ADDR_SIZE + ADDR_LOW - 1;
 logic [ADDR_SIZE-1:0] addr;
 assign addr = intf.i_addr[ADDR_HIGH : ADDR_LOW];
 
 
-logic [DATA_WIDTH-1:0] mem [0 : DEPTH-1];
+logic [intf.DATA_WIDTH-1:0] mem [0 : intf.DEPTH-1];
 
 // WRITE_FIRST MODE
-always @(posedge clk) begin
+always @(posedge intf.clk) begin
 	// do not perform writes on sim_control addresses
 	if ( (intf.i_wen != 0) && !sim_control(intf.i_wdata, intf.i_addr) )
-		for (int i=0 ; i<DATA_BYTES; i++) begin
+		for (int i=0 ; i<intf.DATA_BYTES; i++) begin
 			if ( intf.i_wen[i] ) begin
 				mem[addr][8*i +: 8] = intf.i_wdata[8*i +: 8];
 			end
@@ -92,11 +92,11 @@ end
 
 // initialize memory from file
 initial begin
-	if ( !INIT_ZERO ) begin
-		$readmemh(INIT_FILE, mem, INIT_START, INIT_END);
+	if ( !intf.INIT_ZERO ) begin
+		$readmemh(intf.INIT_FILE, mem, intf.INIT_START, intf.INIT_END);
 	end
 	else begin
-		for (int i=0 ; i<DEPTH; i++) begin
+		for (int i=0 ; i<intf.DEPTH; i++) begin
 			mem[i] = 0;
 		end
 	end

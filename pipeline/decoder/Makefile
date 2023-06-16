@@ -5,10 +5,10 @@ SHELL:=/bin/bash
 
 CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
 
-DUT=idecoder.sv
+DUT=ch0re_idecoder.sv
 TESTBENCH=tb_$(DUT)
 
-PACKAGES=../../instruction/instruction.sv
+PACKAGES=../../instruction/ch0re_instruction.sv
 
 FILELIST=filelist.f
 DEPLIST=

@@ -3,11 +3,15 @@ SHELL:=/bin/bash
 
 .PHONY: all clean simgui simcli
 
-FILELIST=filelist.f
 CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
-TESTBENCH=pipeline/tb_pipeline_5st.sv
-PACKAGES=ch0re_types_pkg.sv
-DEPLIST=types.sv memory_models/mem_sync_sp/mem_sync_sp.sv memory_models/regfile_2r1w/regfile_2r1w.sv
+
+DUT=ch0re_pipeline5st.sv
+TESTBENCH=tb_$(DUT)
+
+PACKAGES=
+
+FILELIST=filelist.f
+DEPLIST=memory_models/mem_sync_sp/mem_sync_sp.sv memory_models/regfile_2r1w/regfile_2r1w.sv
 DEPLIST+=pipeline/pipeline_5st.sv
 
 #DEPLIST=$(wordlist, 2, $(words $(DEPLIST_)), $(DEPLIST_))

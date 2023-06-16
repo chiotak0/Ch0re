@@ -6,13 +6,16 @@ SHELL:=/bin/bash
 CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
 
 
-DUT=pipeline_5st.sv
+DUT=ch0re_pipeline5st.sv
 TESTBENCH=tb_$(DUT)
 
+PACKAGES=
+
 FILELIST=filelist.f
+
 DEPLIST=../memory_models/mem_sync_sp/mem_sync_sp.sv ../memory_models/regfile_2r1w/regfile_2r1w.sv
-DEPLIST+=../memory_models/mem_sync_sp_rvdmem.sv
-DEPLIST+=decoder/idecoder.sv alu/alu.sv
+DEPLIST+=../memory_models/mem_sync_sp_rvdmem/mem_sync_sp_rvdmem.sv
+DEPLIST+=decoder/ch0re_idecoder.sv alu/ch0re_alu.sv
 DEPLIST+=$(DUT)
 
 #DEPLIST=$(wordlist, 2, $(words $(DEPLIST_)), $(DEPLIST_))
@@ -28,7 +31,7 @@ simv: $(TESTBENCH) $(DEPLIST)
 	fi
 	@printf "\033[33mmaking simulation...\033[0m\n"
 #
-	@vcs -f $(FILELIST) $(CFLAGS) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
+	@vcs -f $(FILELIST) $(CFLAGS) $(PACKAGES) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
 #	
 	@if [[ $$? -eq 0 ]]; then\
 		printf "\033[1;32mSUCCESS\033[0m\n";\

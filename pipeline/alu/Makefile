@@ -5,9 +5,10 @@ SHELL:=/bin/bash
 
 CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
 
-
-DUT=alu.sv
+DUT=ch0re_alu.sv
 TESTBENCH=tb_$(DUT)
+
+PACKAGES=ch0re_alu_op.sv
 
 FILELIST=filelist.f
 DEPLIST=
@@ -18,7 +19,7 @@ DEPLIST+=$(DUT)
 
 all: simv
 
-simv: $(TESTBENCH) $(DEPLIST)
+simv: $(TESTBENCH) $(PACKAGES) $(DEPLIST)
 	@rm -f comp.log || true
 	@if [[ -z "$$(command -v vcs)" ]]; then\
 		printf "\033[1;31mvcs compiler not found!\033[0m\n";\
@@ -26,7 +27,7 @@ simv: $(TESTBENCH) $(DEPLIST)
 	fi
 	@printf "\033[33mmaking simulation...\033[0m\n"
 #
-	@vcs -f $(FILELIST) $(CFLAGS) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
+	@vcs -f $(FILELIST) $(CFLAGS) $(PACKAGES) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
 #	
 	@if [[ $$? -eq 0 ]]; then\
 		printf "\033[1;32mSUCCESS\033[0m\n";\
