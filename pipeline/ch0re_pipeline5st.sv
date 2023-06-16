@@ -6,8 +6,8 @@
  */
 
 /* Exceptions:
- * instruction-address-misaligned (IALIGH=32)
- * instruction-illegal (think in IF if PC[1:0] != 0) /// TODO: <--
+ * instruction-address-misaligned (IALIGH=32) (think in IF if PC[1:0] != 0) /// TODO: <--
+ * instruction-illegal
  */
 
 `define SIMULATION
@@ -39,7 +39,7 @@ module ch0re_pipeline5st #(
 	mem_sync_sp_intf #(
 		.DEPTH(IMEM_DEPTH),
 		.DATA_WIDTH(32)
-		// .INIT_FILE(IMEM_FILE),
+		.INIT_FILE(IMEM_FILE)
 		// .INIT_START('h0)
 		// .INIT_END('h160 - 1)
 	) imem_intf (
@@ -48,7 +48,7 @@ module ch0re_pipeline5st #(
 
 	mem_sync_sp imem(imem_intf);
 
-	always_ff @(posedge clk, negedge rst_n) begin : stage_1_if
+	always_ff @(posedge clk, negedge rst_n) begin: stage_1_if
 		if (!rst_n) begin
 
 			IFIDR <= 'b0;
@@ -61,7 +61,7 @@ module ch0re_pipeline5st #(
 			REG_PC <= NEXT_PC;
 
 		end
-	end : stage_1_if
+	end: stage_1_if
 
 	always_comb begin
 
@@ -98,7 +98,9 @@ module ch0re_pipeline5st #(
 	ch0re_idecoder_intf idec_intf();
 	ch0re_idecoder idec(idec_intf);
 
-	always_ff @(posedge clk, negedge rst_n) begin : stage_2_id
+	logic [63:0] wb_data;
+
+	always_ff @(posedge clk, negedge rst_n) begin: stage_2_id
 
 		if (!rst_n) begin
 			IDEXR <= 'b0;
@@ -107,15 +109,31 @@ module ch0re_pipeline5st #(
 
 			// idec_intf.o_illegal_instr (future: precise exceptions?)
 
-			if (idec_intf.o_rf_raddr1)
-				IDEXR[`IDEXR_RS1] <= rf_intf.o_rdata1;
-			else
-				IDEXR[`IDEXR_RS1] <= 'b0;
+			/* Bypass data from WB if conflicting address exists (read & write) */
 
-			if (idec_intf.o_rf_raddr2)
-				IDEXR[`IDEXR_RS2] <= rf_intf.o_rdata2;
-			else
+			if (idec_intf.o_rf_raddr1) begin
+
+				if (idec_intf.o_rf_radd1 == MEMWBR[`MEMWBR_RD])
+					IDEXR[`IDEXR_RS1] <= wb_data;
+				else
+					IDEXR[`IDEXR_RS1] <= rf_intf.o_rdata1;
+			end
+			else begin
+				IDEXR[`IDEXR_RS1] <= 'b0;
+			end
+
+			if (idec_intf.o_rf_raddr2) begin
+
+				if (idec_intf.o_rf_radd2 == MEMWBR[`MEMWBR_RD])
+					IDEXR[`IDEXR_RS2] <= wb_data;
+				else
+					IDEXR[`IDEXR_RS2] <= rf_intf.o_rdata1;
+			end
+			else begin
 				IDEXR[`IDEXR_RS2] <= 'b0;
+			end
+
+			/**********************************************************************/
 
 			IDEXR[`IDEXR_PC] <= IFIDR[`IFIDR_CURR_PC];
 			IDEXR[`IDEXR_RD] <= idec_intf.o_rf_waddr;
@@ -132,7 +150,7 @@ module ch0re_pipeline5st #(
 
 		end
 
-	end : stage_2_id
+	end: stage_2_id
 
 	always_comb begin
 
@@ -158,7 +176,7 @@ module ch0re_pipeline5st #(
 	ch0re_alu_intf alu_intf();
 	ch0re_alu alu(alu_intf);
 
-	always_ff @(posedge clk, negedge rst_n) begin : stage_3_ex
+	always_ff @(posedge clk, negedge rst_n) begin: stage_3_ex
 
 		if (!rst_n) begin
 			EXMEMR <= 'b0;
@@ -173,46 +191,35 @@ module ch0re_pipeline5st #(
 			EXMEMR[`EXMEMR_WEN] <= IDEXR[`IDEXR_WEN];
 
 		end
-	end : stage_3_ex
+	end: stage_3_ex
 
 	always_comb begin
 
-		/// TODO: add ALU muxes!!!
-
 		alu_intf.i_op = IDEXR[`IDEXR_ALU_OP];
-		alu_intf.i_s1 = IDEXR[`IDEXR_RS1];
-		alu_intf.i_s2 = IDEXR[`IDEXR_RS2];
 
 		unique case (IDEXR[`IDEXR_ALU_MUX1_SEL])
 
-			ALU_MUX1_SEL_PC: begin
-				alu_intf.i_s1 = IDEXR[`IDEXR_PC];
-				alu_intf.i_s2 = 'h4;
-			end
-
-			ALU_MUX1_SEL_IMM_ZERO: begin
-				alu_intf.i_s1 = 'h0;
-				alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
-			end
-
-			ALU_MUX1_SEL_REG: begin
-
-				alu_intf.i_s1 = IDEXR[`IDEXR_RS1];
-
-				if (IDEXR[`IDEXR_ALU_MUX2_SEL] == ALU_MUX2_SEL_REG) begin
-					alu_intf.i_s2 = IDEXR[`IDEXR_RS2];
-				end
-				else begin // imm
-					alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
-				end
-
-			end
-
+			ALU_MUX1_SEL_PC: alu_intf.i_s1 = IDEXR[`IDEXR_PC];
+			ALU_MUX1_SEL_REG: alu_intf.i_s1 = IDEXR[`IDEXR_RS1];
+			ALU_MUX1_SEL_IMM_ZERO: alu_intf.i_s1 = 'h0;
 			ALU_MUX1_SEL_FWD: begin
 
 				alu_intf.i_s1 = 'h0;
+				assert(1'b0) else $fatal("Not implemented yet!\n");
+
+			end
+
+		endcase
+
+		unique case (IDEXR[`IDEXR_ALU_MUX2_SEL])
+
+			ALU_MUX2_SEL_IMM: alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
+			ALU_MUX2_SEL_REG: alu_intf.i_s2 = IDEXR[`IDEXR_RS2];
+			ALU_MUX2_SEL_IMM_FOUR: alu_intf.i_s2 = 'h4;
+			ALU_MUX2_SEL_FWD: begin
+
 				alu_intf.i_s2 = 'h0;
-				assert(1'b0) else $fatal("Not yet implemented!\n");
+				assert(1'b0) else $fatal("Not implemented yet!\n");
 
 			end
 
@@ -241,7 +248,7 @@ module ch0re_pipeline5st #(
 
 	mem_sync_sp_rvdmem dmem(dmem_intf);
 
-	always_ff @(posedge clk, negedge rst_n) begin : stage_4_mem
+	always_ff @(posedge clk, negedge rst_n) begin: stage_4_mem
 
 		if (!rst_n) begin
 			MEMWBR <= 'b0;
@@ -256,7 +263,7 @@ module ch0re_pipeline5st #(
 
 		end
 
-	end : stage_4_mem
+	end: stage_4_mem
 
 	always_comb begin
 
@@ -288,12 +295,11 @@ module ch0re_pipeline5st #(
 
 	/* STAGE-5: 'WRITE-BACK' */
 
-	logic [63:0] wb_data;
 	logic [63:0] read_data;
 
 	assign read_data = dmem_intf.o_rdata;
 
-	always_comb begin : stage_5_wb
+	always_comb begin: stage_5_wb
 
 		if (MEMWBR[`MEMWBR_LSU_OP] == LSU_LOAD) begin
 
@@ -307,6 +313,11 @@ module ch0re_pipeline5st #(
 				DTYPE_BYTEU: wb_data = {{56{1'b0}}, read_data[7:0]};
 				DTYPE_HALFU: wb_data = {{48{1'b0}}, read_data[15:0]};
 				DTYPE_WORDU: wb_data = {{32{1'b0}}, read_data[31:0]};
+
+				default: begin
+					wb_data = {64{1'hf}};
+					assert(1'b0) else $fatal();
+				end
 
 			endcase
 
@@ -323,7 +334,7 @@ module ch0re_pipeline5st #(
 		rf_intf.i_waddr = MEMWBR[`MEMWBR_RD];
 		rf_intf.i_wdata = wb_data;
 
-	end : stage_5_wb
+	end: stage_5_wb
 
 endmodule: ch0re_pipeline5st
 

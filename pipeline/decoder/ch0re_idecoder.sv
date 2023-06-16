@@ -341,7 +341,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					intf.o_instr_format = IFORMAT_J;
 					intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM_FOUR;
 					intf.o_alu_op = ALU_ADD;
 
 					intf.o_imm = {{44{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
@@ -361,8 +361,8 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 					/* rd = PC + 4; PC = rs1 + imm */
 
 					intf.o_instr_format = IFORMAT_I;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+					intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
+					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM_FOUR;
 					intf.o_alu_op = ALU_ADD;
 
 					intf.o_imm = {{{52{instr[31]}}}, instr[31:20]};

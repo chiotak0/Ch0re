@@ -29,8 +29,6 @@ class ch0re_alu_op_t;
 
 	function new();
 
-		// God bless chatGPT
-
 		$system("dd if=/dev/random bs=4 count=1 status=none > random_bytes.bin");
 		seed_file = $fopen("random_bytes.bin", "r");
 

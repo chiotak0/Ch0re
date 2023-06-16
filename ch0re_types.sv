@@ -71,9 +71,11 @@ typedef enum logic [1:0] {
 	ALU_MUX1_SEL_PC
 } alu_mux1_sel_e;
 
-typedef enum logic {
+typedef enum logic [1:0] {
 	ALU_MUX2_SEL_REG,
-	ALU_MUX2_SEL_IMM
+	ALU_MUX2_SEL_IMM,
+	ALU_MUX2_SEL_IMM_FOUR,
+	ALU_MUX2_SEL_FWD
 } alu_mux2_sel_e;
 
 typedef enum logic [4:0] {

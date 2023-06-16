@@ -19,6 +19,18 @@ module tb_ch0re_idecoder();
 
 	task verify_decoded_instr();
 
+		ALU_OP: assert(
+			idec_intf.o_alu_op == instr.get_alu_op()
+		) else begin
+			$display("instr.get_alu_op() = %s (h%0h)\n",
+				instr.get_alu_op().name(), instr.get_alu_op());
+
+			print_dut_output();
+			$display();
+			instr.print();
+			$fatal();
+		end
+
 		unique case (instr.get_fmt())
 
 			IFORMAT_R: begin
@@ -52,14 +64,39 @@ module tb_ch0re_idecoder();
 					idec_intf.o_rf_raddr1 == instr.get_rs1() &&
 					idec_intf.o_rf_waddr == instr.get_rd() &&
 
-					idec_intf.o_instr_format == IFORMAT_I &&
-					idec_intf.o_alu_mux1_sel == ALU_MUX1_SEL_REG &&
-					idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_IMM
+					idec_intf.o_instr_format == IFORMAT_I
 				) else begin
 					print_dut_output();
 					$display();
 					instr.print();
 					$fatal();
+				end
+
+				if (instr.get_op() == "jalr") begin
+
+					JALR: assert(
+						idec_intf.o_alu_mux1_sel == ALU_MUX1_SEL_PC &&
+						idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_IMM_FOUR
+					)  else begin
+						print_dut_output();
+						$display();
+						instr.print();
+						$fatal();
+					end
+
+				end
+				else begin
+
+					OTHER: assert(
+						idec_intf.o_alu_mux1_sel == ALU_MUX1_SEL_REG &&
+						idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_IMM
+					)  else begin
+						print_dut_output();
+						$display();
+						instr.print();
+						$fatal();
+					end
+
 				end
 
 			end
@@ -118,7 +155,7 @@ module tb_ch0re_idecoder();
 					idec_intf.o_instr_format == IFORMAT_J &&
 
 					idec_intf.o_alu_mux1_sel == ALU_MUX1_SEL_PC &&
-					idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_IMM
+					idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_IMM_FOUR
 				) else begin
 					print_dut_output();
 					$display();
@@ -198,18 +235,6 @@ module tb_ch0re_idecoder();
 			end
 
 		endcase
-
-		ALU_OP: assert(
-			idec_intf.o_alu_op == instr.get_alu_op()
-		) else begin
-			$display("instr.get_alu_op() = %s (h%0h)\n",
-				instr.get_alu_op().name(), instr.get_alu_op());
-
-			print_dut_output();
-			$display();
-			instr.print();
-			$fatal();
-		end
 
 		`DBP_PRINT_CURR();
 		$write("'%0s' was decoded successfully\n", instr.get_op());
