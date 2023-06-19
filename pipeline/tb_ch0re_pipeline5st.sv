@@ -1,24 +1,38 @@
-`timescale 1ns/100ps
+`timescale 1ns/1ps
 
 `include "ch0re_types.sv"
 `include "debug_prints.sv"
 
-program tb_ch0re_pipeline5st(
-    input logic clk,
-    output logic rst_
-);
+module tb_ch0re_pipeline5st();
+
+    logic clk;
+    logic rst_n;
+
+    ch0re_pipeline5st #(
+        .IMEM_FILE("../code/example0/example0.imem.dat"),
+        .DMEM_FILE("../code/example0/example0.dmem.dat"),
+        .IMEM_START('h150)
+    ) dut (
+        .clk(clk),
+        .rst_n(rst_n)
+    );
+
+    always #10 clk = ~clk;
 
     initial begin
 
-        $display("[\033[1;32mINFO\033[0m]: \033[2m%m\033[0m\n");
+        clk = 0;
 
-        #1 rst_ = 1'b0;
+        rst_n = 1'b0;
 
-        @(posedge clk);
+        `DBP_PRINT_CURR();
+        $write("asserting 'rst_n' (time: %0t)\n", $time);
 
-        #1 rst_ = 1'b1;
+        #5 rst_n = 1'b1;
 
-        @(posedge clk);
+        `DBP_PRINT_CURR();
+        $write("deasserting 'rst_n' (time: %0d)\n", $time);
+
         @(posedge clk);
         @(posedge clk);
         @(posedge clk);
@@ -28,5 +42,5 @@ program tb_ch0re_pipeline5st(
         $finish();
     end
 
-endprogram: tb_ch0re_pipeline5st
+endmodule: tb_ch0re_pipeline5st
 

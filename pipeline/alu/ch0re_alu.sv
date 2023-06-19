@@ -8,7 +8,7 @@ interface ch0re_alu_intf();
 	logic [63:0] i_s2;
 
 	logic o_flag_zero;
-	logic o_flag_lt;
+	logic o_flag_less;
 
 	logic [63:0] o_res;
 
@@ -49,14 +49,14 @@ module ch0re_alu(ch0re_alu_intf intf);
 
 		unique case (intf.i_op)
 
-			ALU_GEU, ALU_SLTU, ALU_LTU: intf.o_flag_lt = intf.i_s1 < intf.i_s2;
-			default: intf.o_flag_lt = adder_result[63];
+			ALU_GEU, ALU_SLTU, ALU_LTU: intf.o_flag_less = intf.i_s1 < intf.i_s2;
+			default: intf.o_flag_less = adder_result[63];
 
 		endcase
 
 		unique case (intf.i_op)
 
-			ALU_SLT, ALU_SLTU: intf.o_res = intf.o_flag_lt;
+			ALU_SLT, ALU_SLTU: intf.o_res = intf.o_flag_less;
 
 			ALU_EQ,  ALU_NE,
 			ALU_LT,  ALU_GE,

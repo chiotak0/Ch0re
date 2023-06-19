@@ -117,7 +117,7 @@ module tb_ch0re_alu();
 			ALU_LTU, ALU_GEU: begin
 
 				assert(
-					alu_op.get_flag_lt() == intf.o_flag_lt &&
+					alu_op.get_flag_lt() == intf.o_flag_less &&
 					alu_op.get_flag_zero() == intf.o_flag_zero
 				)
 				else begin
@@ -147,7 +147,7 @@ module tb_ch0re_alu();
 		$display("intf.o_res = %0d (h%0h)", signed'(intf.o_res), intf.o_res);
 		$display("-----------------------------");
 		$display("intf.o_flag_zero = 1'b%1b", intf.o_flag_zero);
-		$display("intf.o_flag_lt   = 1'b%1b", intf.o_flag_lt);
+		$display("intf.o_flag_less   = 1'b%1b", intf.o_flag_less);
 		$display("-----------------------------");
 
 	endtask

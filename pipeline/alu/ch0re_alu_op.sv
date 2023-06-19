@@ -1,6 +1,8 @@
 `include "ch0re_types.sv"
 `include "debug_prints.sv"
 
+/// TODO: intergrate ch0re_alu_op into ch0re_instruction
+
 class ch0re_alu_op_t;
 
 	randc alu_op_e op;
@@ -23,7 +25,7 @@ class ch0re_alu_op_t;
 
 	local logic flag_overflow;
 	local logic flag_zero;
-	local logic flag_lt;
+	local logic flag_less;
 
 	/* Methods */
 
@@ -81,7 +83,7 @@ class ch0re_alu_op_t;
 	endfunction
 
 	function logic get_flag_lt();
-		return this.flag_lt;
+		return this.flag_less;
 	endfunction
 
 	function void gen(alu_op_e op);
@@ -95,7 +97,7 @@ class ch0re_alu_op_t;
 		else $fatal();
 
 		this.flag_zero = (this.src1 == this.src2) ? 1'b1 : 1'b0;
-		this.flag_lt = 'hx;  // I only care about branches
+		this.flag_less = 'hx;  // I only care about branches
 
 		unique case (op)
 
@@ -106,9 +108,9 @@ class ch0re_alu_op_t;
 			ALU_SUB: this.res = this.src1 - this.src2;
 
 			ALU_EQ,  ALU_NE,
-			ALU_LT,  ALU_GE: this.flag_lt = (this.src1 < this.src2) ? 'b1 : 'b0;
+			ALU_LT,  ALU_GE: this.flag_less = (this.src1 < this.src2) ? 'b1 : 'b0;
 
-			ALU_LTU, ALU_GEU: this.flag_lt = (unsigned'(this.src1) < unsigned'(this.src2)) ? 'b1 : 'b0;
+			ALU_LTU, ALU_GEU: this.flag_less = (unsigned'(this.src1) < unsigned'(this.src2)) ? 'b1 : 'b0;
 
 			ALU_OR:  this.res = this.src1 | this.src2;
 			ALU_XOR: this.res = this.src1 ^ this.src2;
@@ -142,7 +144,7 @@ class ch0re_alu_op_t;
 		$display("");
 		// $display("flag_overflow = 1'b%1b", this.flag_overflow);
 		$display("flag_zero = 1'b%1b", this.flag_zero);
-		$display("flag_lt   = 1'b%1b", this.flag_lt);
+		$display("flag_less   = 1'b%1b", this.flag_less);
 
 	endfunction
 

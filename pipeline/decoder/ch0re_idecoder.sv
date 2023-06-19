@@ -4,8 +4,23 @@ interface ch0re_idecoder_intf();
 
 	logic [31:0] i_instr;
 
+	/* Bypassing */
+
+	logic [4:0] i_ex_rd;
+	iformat_e i_ex_iformat;
+	lsu_op_e i_ex_lsu_op;
+	logic i_ex_wen;
+
+	logic [4:0] i_mem_rd;
+	iformat_e i_mem_iformat;
+	logic i_mem_wen;
+
+	/* Generic Control */
+
 	logic o_illegal_instr;
 	logic o_wen;
+
+	/* to RegFile */
 
 	logic [4:0] o_rf_raddr1;
 	logic [4:0] o_rf_raddr2;
@@ -14,8 +29,9 @@ interface ch0re_idecoder_intf();
 	/* to ALU */
 
 	logic [63:0] o_imm;
-	iformat_e o_instr_format; /// TODO: remove!
+	iformat_e o_instr_format;
 	alu_op_e o_alu_op;
+
 	alu_mux1_sel_e o_alu_mux1_sel;
 	alu_mux2_sel_e o_alu_mux2_sel;
 
@@ -28,19 +44,24 @@ endinterface: ch0re_idecoder_intf
 
 
 module ch0re_idecoder(ch0re_idecoder_intf intf);
+
 	logic [31:0] instr;
 	opcode_e opcode;
 
+	iformat_e instr_format;
+
 	/** Register Handling **/
 
-	assign instr = intf.i_instr;
 	assign intf.o_rf_raddr1 = instr[19:15];
 	assign intf.o_rf_raddr2 = instr[24:20];
 	assign intf.o_rf_waddr  = instr[11:7];
+
+	assign instr  = intf.i_instr;
 	assign opcode = opcode_e'(instr[6:2]);
 
+	assign intf.o_instr_format = instr_format;
 
-	always_comb begin
+	always_comb begin: decoding
 
 		/* Only 32-bit instructions supported! */
 
@@ -48,9 +69,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 			intf.o_illegal_instr = 1'b1;
 
-			intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-			intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
-			intf.o_instr_format = IFORMAT_J;
+			instr_format = IFORMAT_NONE;
 			intf.o_alu_op = ALU_SLL;
 			intf.o_lsu_op = LSU_LOAD;
 			intf.o_imm = 64'h0;
@@ -67,9 +86,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					/* rd = (rs1[31:0] op rs2[31:0])[31:0] */
 
-					intf.o_instr_format = IFORMAT_R;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
+					instr_format = IFORMAT_R;
 
 					unique case (instr[14:12])
 
@@ -82,6 +99,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 							end
 							else begin
 								intf.o_illegal_instr = 1'b1;
+								instr_format = IFORMAT_NONE;
 								intf.o_wen = 1'b0;
 							end
 						end
@@ -95,6 +113,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 							end
 							else begin
 								intf.o_illegal_instr = 1'b1;
+								instr_format = IFORMAT_NONE;
 								intf.o_wen = 1'b0;
 							end
 						end
@@ -103,6 +122,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 						default: begin
 							intf.o_illegal_instr = 1'b1;
+							instr_format = IFORMAT_NONE;
 							intf.o_wen = 1'b0;
 						end
 
@@ -110,25 +130,22 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 				end: op_op32
 
-				OPCODE_OP_IMM32: begin: op_op_imm32
+				OPCODE_OP_IMM32: begin: op_op_imm32 // "w"
 
 					/* rd = (rs1 op imm)[31:0] */
 
-					intf.o_instr_format = IFORMAT_I;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
-
+					instr_format = IFORMAT_I;
 					intf.o_imm = {{59{1'b0}}, instr[24:20]};
 
 					unique case (instr[14:12])
 
 						3'h1: begin
 							if (instr[31:25] == 7'h0) begin
-								intf.o_illegal_instr = 1'b0;
 								intf.o_alu_op = ALU_SLL;
 							end
 							else begin
 								intf.o_illegal_instr = 1'b1;
+								instr_format = IFORMAT_NONE;
 								intf.o_wen = 1'b0;
 								intf.o_alu_op = ALU_SLTU;
 							end
@@ -143,6 +160,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 							end
 							else begin
 								intf.o_illegal_instr = 1'b1;
+								instr_format = IFORMAT_NONE;
 								intf.o_wen = 1'b0;
 								intf.o_alu_op = ALU_SLTU;
 							end
@@ -152,6 +170,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 						default: begin
 							intf.o_illegal_instr = 1'b1;
+							instr_format = IFORMAT_NONE;
 							intf.o_wen = 1'b0;
 							intf.o_alu_op = ALU_SLTU;
 						end
@@ -164,9 +183,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					/* rd = rs1 op rs2 */
 
-					intf.o_instr_format = IFORMAT_R;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
+					instr_format = IFORMAT_R;
 
 					unique case (instr[14:12])
 
@@ -179,6 +196,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 							end
 							else begin
 								intf.o_illegal_instr = 1'b1;
+								instr_format = IFORMAT_NONE;
 								intf.o_wen = 1'b0;
 								intf.o_alu_op = ALU_SLTU;
 							end
@@ -193,6 +211,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 							end
 							else begin
 								intf.o_illegal_instr = 1'b1;
+								instr_format = IFORMAT_NONE;
 								intf.o_wen = 1'b0;
 								intf.o_alu_op = ALU_SLTU;
 							end
@@ -215,21 +234,18 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					/* rd = rs1 op imm */
 
-					intf.o_instr_format = IFORMAT_I;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
-
+					instr_format = IFORMAT_I;
 					intf.o_imm = {{52{instr[31]}}, instr[31:20]};
 
 					unique case (instr[14:12])
 
 						3'h1: begin
 							if (instr[31:26] == 6'h0) begin
-								intf.o_illegal_instr = 1'b0;
 								intf.o_alu_op = ALU_SLL;
 							end
 							else begin
 								intf.o_illegal_instr = 1'b1;
+								instr_format = IFORMAT_NONE;
 								intf.o_wen = 1'b0;
 								intf.o_alu_op = ALU_SLTU;
 							end
@@ -248,6 +264,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 							end
 							else begin
 								intf.o_illegal_instr = 1'b1;
+								instr_format = IFORMAT_NONE;
 								intf.o_wen = 1'b0;
 								intf.o_alu_op = ALU_SLTU;
 							end
@@ -268,70 +285,58 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 				OPCODE_LOAD: begin: op_load
 
-					if (instr[14:12] == 3'h7) begin
-						intf.o_illegal_instr = 1'b1;
-						intf.o_wen = 1'b0;
-					end
-					else begin
-						intf.o_illegal_instr = 1'b0;
-					end
-
 					/* rd = Mem[rs1 + imm] */
 
-					intf.o_instr_format = IFORMAT_I;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+					instr_format = IFORMAT_I;
 					intf.o_data_type = data_type_e'(instr[14:12]);
 					intf.o_alu_op = ALU_ADD;
 					intf.o_lsu_op = LSU_LOAD;
 
 					intf.o_imm = {{{52{instr[31]}}}, instr[31:20]};
 
+					if (instr[14:12] == 3'h7) begin
+						intf.o_illegal_instr = 1'b1;
+						instr_format = IFORMAT_NONE;
+						intf.o_wen = 1'b0;
+					end
+
 				end: op_load
 
 				OPCODE_STORE: begin: op_store
 
-					// if func3 >= 4 and func3 <=7 <=> illegal
-					if (instr[14] == 1'b1) begin
-						intf.o_illegal_instr = 1'b1;
-						intf.o_wen = 1'b0;
-					end
-					else begin
-						intf.o_illegal_instr = 1'b0;
-					end
-
 					/* Mem[rs1 + imm] = rs2 */
 
-					intf.o_instr_format = IFORMAT_S;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+					instr_format = IFORMAT_S;
 					intf.o_data_type = data_type_e'(instr[14:12]);
 					intf.o_alu_op = ALU_ADD;
 					intf.o_lsu_op = LSU_STORE;
 
 					intf.o_imm = {{{52{instr[31]}}}, instr[31:25], instr[11:7]};
 
+					// if func3 >= 4 and func3 <=7 <=> illegal
+					if (instr[14] == 1'b1) begin
+						intf.o_illegal_instr = 1'b1;
+						instr_format = IFORMAT_NONE;
+						intf.o_wen = 1'b0;
+					end
+
+
 				end: op_store
 
 				OPCODE_BRANCH: begin: op_branch
 
+					/* if(rs1 cond rs2) then PC += imm */
+
+					instr_format = IFORMAT_B;
+					intf.o_alu_op = {1'b0, instr[14:12]};
 					intf.o_wen = 1'b0;
+
+					intf.o_imm = {{{52{instr[31]}}}, instr[7], instr[30:25], instr[11:8], 1'b0};
 
 					if (instr[14:12] == 3'h2 | instr[14:12] == 3'h3) begin
 						intf.o_illegal_instr = 1'b1;
+						instr_format = IFORMAT_NONE;
 					end
-					else begin
-						intf.o_illegal_instr = 1'b0;
-					end
-
-					/* if(rs1 cond rs2) then PC += imm */
-
-					intf.o_instr_format = IFORMAT_B;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
-					intf.o_alu_op = {1'b0, instr[14:12]};
-
-					intf.o_imm = {{{52{instr[31]}}}, instr[7], instr[30:25], instr[11:8], 1'b0};
 
 				end: op_branch
 
@@ -339,9 +344,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					/* rd = PC + 4; PC += imm */
 
-					intf.o_instr_format = IFORMAT_J;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM_FOUR;
+					instr_format = IFORMAT_J;
 					intf.o_alu_op = ALU_ADD;
 
 					intf.o_imm = {{44{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
@@ -350,22 +353,18 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 				OPCODE_JALR: begin :op_jalr
 
-					if (instr[14:12] != 3'h0) begin
-						intf.o_illegal_instr = 1'b1;
-						intf.o_wen = 1'b0;
-					end
-					else begin
-						intf.o_illegal_instr = 1'b0;
-					end
-
 					/* rd = PC + 4; PC = rs1 + imm */
 
-					intf.o_instr_format = IFORMAT_I;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM_FOUR;
+					instr_format = IFORMAT_I;
 					intf.o_alu_op = ALU_ADD;
 
 					intf.o_imm = {{{52{instr[31]}}}, instr[31:20]};
+
+					if (instr[14:12] != 3'h0) begin
+						intf.o_illegal_instr = 1'b1;
+						instr_format = IFORMAT_NONE;
+						intf.o_wen = 1'b0;
+					end
 
 				end: op_jalr
 
@@ -373,22 +372,18 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					/* rd = (imm << 12) */
 
-					intf.o_instr_format = IFORMAT_U;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_IMM_ZERO;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+					instr_format = IFORMAT_U;
 					intf.o_alu_op = ALU_ADD;
 
 					intf.o_imm = {{32{instr[31]}}, instr[31:12], 12'b0};
 
 				end: op_lui
 
-				OPCODE_AUIPC: begin: op_auipc
+				OPCODE_AUIPC: begin: op_auipc  
 
 					/* rd = PC + (imm << 12) */
 
-					intf.o_instr_format = IFORMAT_U;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+					instr_format = IFORMAT_U;
 					intf.o_alu_op = ALU_ADD;
 
 					intf.o_imm = {{32{instr[31]}}, instr[31:12], 12'b0};
@@ -401,12 +396,10 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					intf.o_illegal_instr = 1'b1; // unknown
 
-					intf.o_instr_format = IFORMAT_R;
+					instr_format = IFORMAT_NONE;
 					intf.o_alu_op = ALU_SLTU;
 					intf.o_lsu_op = LSU_NONE;
 					intf.o_imm = 64'h0;
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
 					intf.o_data_type = DTYPE_DOUBLE;
 					intf.o_wen = 1'b0;
 
@@ -415,6 +408,106 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 			endcase
 		end
 
-	end
+	end: decoding
+
+	always_comb begin: alu_muxes_control_signals
+
+		if (intf.o_illegal_instr) begin: illegal_instr
+			intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
+			intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
+		end
+		else begin
+
+			unique case (instr_format)
+
+			IFORMAT_R,
+			IFORMAT_S,
+			IFORMAT_B: begin
+
+				intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
+				intf.o_alu_mux2_sel = (instr_format == IFORMAT_S) ? ALU_MUX2_SEL_IMM : ALU_MUX2_SEL_REG;
+
+				if (intf.i_ex_lsu_op == LSU_LOAD) begin
+					/// TODO: STALL!
+				end
+				else if ((intf.i_ex_iformat != IFORMAT_S) & (intf.i_ex_iformat != IFORMAT_B)) begin: mem_to_ex
+
+					if (intf.i_ex_rd == intf.o_rf_raddr1) begin
+						intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_MEM;
+					end
+
+					if (intf.i_ex_rd == intf.o_rf_raddr2) begin
+						intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_MEM;
+					end
+				end
+				else if ((intf.i_mem_iformat != IFORMAT_S) & (intf.i_mem_iformat != IFORMAT_B)) begin: wb_to_ex
+
+					if (intf.i_mem_rd == intf.o_rf_raddr1) begin
+						intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_WB;
+					end
+
+					if (intf.i_mem_rd == intf.o_rf_raddr2) begin
+						intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_WB;
+					end
+
+				end
+
+			end
+
+			IFORMAT_I: begin
+
+				if (opcode == OPCODE_JALR) begin  /// TODO: STALL if 'rs1' is needed
+					intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
+					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM_FOUR;
+				end
+				else begin
+
+					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
+
+					if (intf.i_ex_lsu_op == LSU_LOAD) begin
+						/// TODO: STALL!
+					end
+					else if ((intf.i_ex_iformat != IFORMAT_S) & (intf.i_ex_iformat != IFORMAT_B)
+						& (intf.i_ex_rd == intf.o_rf_raddr1)) begin
+						intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_MEM;
+					end
+					else if ((intf.i_mem_iformat != IFORMAT_S) & (intf.i_mem_iformat != IFORMAT_S)
+							& (intf.i_mem_rd == intf.o_rf_raddr1)) begin
+						intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_WB;
+					end
+
+				end
+
+			end
+
+			IFORMAT_J: begin /* No bypass */
+				intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
+				intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM_FOUR;
+			end
+
+			IFORMAT_U: begin /* No bypass */
+
+				intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+
+				if (opcode == OPCODE_LUI)
+					intf.o_alu_mux1_sel = ALU_MUX1_SEL_IMM_ZERO;
+				else // OPCODE_AUIPC
+					intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
+
+			end
+
+			default: begin /* error (?) */
+				intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
+				intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
+
+				// assert(1'b0) else $fatal();
+			end
+
+			endcase
+
+		end
+
+	end: alu_muxes_control_signals
 
 endmodule: ch0re_idecoder

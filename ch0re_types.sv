@@ -20,6 +20,7 @@ typedef enum logic [4:0] {
 } opcode_e;
 
 typedef enum logic [2:0] {
+	IFORMAT_NONE,
 	IFORMAT_R,
 	IFORMAT_I,
 	IFORMAT_S,
@@ -48,9 +49,9 @@ typedef enum logic [3:0] {
 } alu_op_e;
 
 typedef enum logic [1:0] {
-	LSU_NONE,
 	LSU_LOAD,
-	LSU_STORE
+	LSU_STORE,
+	LSU_NONE
 } lsu_op_e;
 
 typedef enum logic [2:0] {
@@ -64,18 +65,20 @@ typedef enum logic [2:0] {
 	DTYPE_WORDU
 } data_type_e;
 
-typedef enum logic [1:0] {
+typedef enum logic [2:0] {
 	ALU_MUX1_SEL_REG,
 	ALU_MUX1_SEL_IMM_ZERO,
-	ALU_MUX1_SEL_FWD,
-	ALU_MUX1_SEL_PC
+	ALU_MUX1_SEL_PC,
+	ALU_MUX1_SEL_FWD_MEM,
+	ALU_MUX1_SEL_FWD_WB
 } alu_mux1_sel_e;
 
-typedef enum logic [1:0] {
+typedef enum logic [2:0] {
 	ALU_MUX2_SEL_REG,
 	ALU_MUX2_SEL_IMM,
 	ALU_MUX2_SEL_IMM_FOUR,
-	ALU_MUX2_SEL_FWD
+	ALU_MUX2_SEL_FWD_MEM,
+	ALU_MUX2_SEL_FWD_WB
 } alu_mux2_sel_e;
 
 typedef enum logic [4:0] {

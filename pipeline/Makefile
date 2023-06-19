@@ -9,7 +9,7 @@ CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
 DUT=ch0re_pipeline5st.sv
 TESTBENCH=tb_$(DUT)
 
-PACKAGES=
+PACKAGES=../instruction/ch0re_instruction.sv
 
 FILELIST=filelist.f
 
@@ -23,7 +23,7 @@ DEPLIST+=$(DUT)
 
 all: simv
 
-simv: $(TESTBENCH) $(DEPLIST)
+simv: $(TESTBENCH) $(PACKAGES) $(DEPLIST)
 	@rm -f comp.log || true
 	@if [[ -z "$$(command -v vcs)" ]]; then\
 		printf "\033[1;31mvcs compiler not found!\033[0m\n";\

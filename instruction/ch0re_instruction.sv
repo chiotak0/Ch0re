@@ -29,6 +29,10 @@
 `define EXIT_SUCCESS (0)
 `define EXIT_FAILURE (-1)
 
+typedef enum logic [1:0] {
+	//
+} dependency_e;
+
 class ch0re_instruction_t;
 
 	/* Instruction Binary Representation */
@@ -83,7 +87,7 @@ class ch0re_instruction_t;
 		"lhu" : {ALU_ADD, IFORMAT_I, `IGNORE_F7, 3'h5, OPCODE_LOAD},
 		"lwu" : {ALU_ADD, IFORMAT_I, `IGNORE_F7, 3'h6, OPCODE_LOAD},
 
-		"jarl" : {ALU_ADD, IFORMAT_I, `IGNORE_F7, 3'h0, OPCODE_JALR},
+		"jalr" : {ALU_ADD, IFORMAT_I, `IGNORE_F7, 3'h0, OPCODE_JALR},
 
 		/* S-FORMAT */
 
@@ -112,7 +116,7 @@ class ch0re_instruction_t;
 
 		/* ILLEGAL */
 
-		"illegal" : {ALU_ADD, IFORMAT_J + 1'b1, `IGNORE_F7, 3'h7, OPCODE_LOAD} // illegal load
+		"illegal" : {ALU_ADD, IFORMAT_NONE, `IGNORE_F7, 3'h7, OPCODE_LOAD} // illegal load
 	};
 
 	/* instruction info */
@@ -131,7 +135,7 @@ class ch0re_instruction_t;
 	/* Constructors */
 
 	function new();
-
+		this.fmt = IFORMAT_NONE;
 	endfunction
 
 	/* Getters/Setters */
@@ -288,7 +292,13 @@ class ch0re_instruction_t;
 
 	endfunction: gen
 
-	task print();
+	function int set_dependency(dependency_e dep);
+
+		return `EXIT_SUCCESS;
+
+	endfunction
+
+	function void print();
 
 		$display("opcode = %7b", this.binstr[6:0]);
 
@@ -342,7 +352,7 @@ class ch0re_instruction_t;
 
 		endcase
 
-	endtask: print
+	endfunction: print
 
 endclass : ch0re_instruction_t
 
