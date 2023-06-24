@@ -29,11 +29,7 @@
 `define EXIT_SUCCESS (0)
 `define EXIT_FAILURE (-1)
 
-typedef enum logic [1:0] {
-	//
-} dependency_e;
-
-class ch0re_instruction_t;
+class ch0re_instruction_t #(type opT = string);
 
 	/* Instruction Binary Representation */
 
@@ -116,32 +112,68 @@ class ch0re_instruction_t;
 
 		/* ILLEGAL */
 
-		"illegal" : {ALU_ADD, IFORMAT_NONE, `IGNORE_F7, 3'h7, OPCODE_LOAD} // illegal load
+		"illegal" : {ALU_ADD, IFORMAT_ILLEGAL, `IGNORE_F7, 3'h7, OPCODE_LOAD} // illegal load
 	};
 
 	/* instruction info */
 
-	string str;
+	opT op;
 	alu_op_e alu_op;
 	local iformat_e fmt;
-	local bit [20:0] imm;
+	rand local bit [20:0] imm;
 
 	`define MAX_IMM 21
 
-	local reg_e rs1;
-	local reg_e rs2;
-	local reg_e rd;
+	randc local reg_e rs1;
+	randc local reg_e rs2;
+	randc local reg_e rd;
+
+	rand dependency_e dep;
+
+	/// TODO: add data_type_e for loads verification
+
+	/* utils */
+
+	logic [31:0] random_seed;
+	int seed_file;
 
 	/* Constructors */
 
 	function new();
+
 		this.fmt = IFORMAT_NONE;
+
+		$system("dd if=/dev/random bs=4 count=1 status=none > random_bytes.bin");
+		seed_file = $fopen("random_bytes.bin", "r");
+
+		if (seed_file != 0) begin
+
+			void'($fread(random_seed, seed_file));
+			$fclose(seed_file);
+
+			`DBP_PRINT_CURR();
+			$display("seed: %h", random_seed);
+
+		end
+		else begin
+
+			`DBP_PRINT_CURR();	
+			$display("failed to open the seed_file for reading");
+			random_seed = 1;
+
+			`DBP_PRINT_CURR();
+			$display("seed: %h", random_seed);
+
+		end
+
+		srandom(random_seed);
+
 	endfunction
 
-	/* Getters/Setters */
+	/* Getters */
 
-	function string get_op();
-		return this.str;
+	function opT get_op();
+		return this.op;
 	endfunction
 
 	function alu_op_e get_alu_op();
@@ -168,9 +200,13 @@ class ch0re_instruction_t;
 		return this.rd;
 	endfunction
 
+	function dependency_e get_dep();
+		return this.dep;
+	endfunction
+
 	/* Other Methods */
 
-	function int gen(string op, int r1, int r2, int r3_imm, ref logic [31:0] instr);  // no support for variadic functions :(
+	function int gen(opT op, int r1, int r2, int r3_imm, ref logic [31:0] instr, dependency_e dep);  // no support for variadic functions :(
 
 		if (op.len() == 0) begin
 
@@ -180,7 +216,8 @@ class ch0re_instruction_t;
 			return `EXIT_FAILURE;
 		end
 
-		this.str = op;
+		this.op = op;
+		this.dep = dep;
 		this.alu_op = `GET_ALU_OP(itt, op);
 
 		/* Encode Instruction */
@@ -265,7 +302,7 @@ class ch0re_instruction_t;
 
 			end
 
-			default: begin // illegal instruction
+			IFORMAT_ILLEGAL: begin
 
 				// faulted 'load'
 				this.binstr[`RD]     = 5'b10101;
@@ -275,26 +312,65 @@ class ch0re_instruction_t;
 
 			end
 
+			default: assert(1'b0) else $fatal();
+
 		endcase
 
 		// Ignore a portion of the imm for these I-Format instructions
 
-		if (this.str == "srai")
+		if (this.op == "srai")
 			this.binstr[31:26] = 6'h10;
-		else if (this.str == "srli" || this.str == "slli")
+		else if (this.op == "srli" || this.op == "slli")
 			this.binstr[31:26] = 6'h0;
-		else if (this.str == "sraiw")
+		else if (this.op == "sraiw")
 			this.binstr[31:25] = 7'h20;
-		else if (this.str == "srliw" || this.str == "slliw")
+		else if (this.op == "srliw" || this.op == "slliw")
 			this.binstr[31:25] = 7'h0;
 
 		instr = this.binstr;
 
+		return `EXIT_SUCCESS;
+
 	endfunction: gen
 
-	function int set_dependency(dependency_e dep);
+	function int gen_rand(string op, ref logic [31:0] instr);
 
-		return `EXIT_SUCCESS;
+		int tmp;
+		int ret;
+
+		assert(randomize(this.rd))
+		else $fatal();
+
+		assert(randomize(this.rs1))
+		else $fatal();
+
+		assert(randomize(this.rs2))
+		else $fatal();
+
+		assert(randomize(this.imm))
+		else $fatal();
+
+		assert(randomize(this.dep))
+		else $fatal();
+
+		unique case (`GET_IFMT(itt, op))
+
+			IFORMAT_R: ret = this.gen(op, this.rd, this.rs1, this.rs2, instr, this.dep);
+			IFORMAT_I: ret = this.gen(op, this.rd, this.rs1, this.imm, instr, this.dep);
+
+			IFORMAT_S,
+			IFORMAT_B: ret = this.gen(op, this.rs1, this.rs2, this.imm, instr, this.dep);
+
+			IFORMAT_J,
+			IFORMAT_U: ret = this.gen(op, this.rd, this.rs1, this.rs2, instr, this.dep);
+
+			IFORMAT_ILLEGAL: ret = this.gen(op, 32'dx, 32'dx, 32'dx, instr, this.dep);
+
+			default: assert(1'b0) else $fatal();
+
+		endcase
+
+		return ret;
 
 	endfunction
 
@@ -311,6 +387,7 @@ class ch0re_instruction_t;
 				$display("rs1    = %5b", this.binstr[`RS1]);
 				$display("rs2    = %5b", this.binstr[`RS2]);
 				$display("func7  = %7b", this.binstr[`FUNC7]);
+				$display("dep    = %0s", this.dep.name());
 
 			end
 
@@ -320,6 +397,7 @@ class ch0re_instruction_t;
 				$display("func3  = %3b", this.binstr[`FUNC3]);
 				$display("rs1    = %5b", this.binstr[`RS1]);
 				$display("imm    = h%12h", this.binstr[`IMM_I]);
+				$display("dep    = %0s", this.dep.name());
 
 			end
 
@@ -330,6 +408,7 @@ class ch0re_instruction_t;
 				$display("rs1    = %5b", this.binstr[`RS1]);
 				$display("rs2    = %5b", this.binstr[`RS2]);
 				$display("immhi  = %7b", this.binstr[`IMM_B_H]);
+				$display("dep    = %0s", this.dep.name());
 
 			end
 
@@ -340,7 +419,7 @@ class ch0re_instruction_t;
 
 			end
 
-			default: begin // illegal instruction
+			IFORMAT_ILLEGAL: begin // illegal instruction
 
 				// faulted 'load'
 				$display("rd     = %5b", this.binstr[`RD]);
@@ -350,9 +429,13 @@ class ch0re_instruction_t;
 
 			end
 
+			default: begin
+				assert(1'b0) else $fatal();
+			end
+
 		endcase
 
 	endfunction: print
 
-endclass : ch0re_instruction_t
+endclass: ch0re_instruction_t
 

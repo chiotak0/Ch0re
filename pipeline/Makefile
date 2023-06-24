@@ -6,7 +6,7 @@ SHELL:=/bin/bash
 CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
 
 
-DUT=ch0re_pipeline5st.sv
+DUT=ch0re_pipeline.sv
 TESTBENCH=tb_$(DUT)
 
 PACKAGES=../instruction/ch0re_instruction.sv

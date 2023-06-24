@@ -26,7 +26,8 @@ typedef enum logic [2:0] {
 	IFORMAT_S,
 	IFORMAT_B,
 	IFORMAT_U,
-	IFORMAT_J
+	IFORMAT_J,
+	IFORMAT_ILLEGAL
 } iformat_e;
 
 typedef enum logic [3:0] {
@@ -49,9 +50,9 @@ typedef enum logic [3:0] {
 } alu_op_e;
 
 typedef enum logic [1:0] {
+	LSU_NONE,
 	LSU_LOAD,
-	LSU_STORE,
-	LSU_NONE
+	LSU_STORE
 } lsu_op_e;
 
 typedef enum logic [2:0] {
@@ -118,6 +119,14 @@ typedef enum logic [4:0] {
 	REG_X30_T5   = 30,
 	REG_X31_T6   = 31
 } reg_e;
+
+typedef enum logic [2:0] {
+	DEP_NONE,
+	DEP_EX_LOAD,
+	DEP_EX_OTHER,
+	DEP_MEM_LOAD,
+	DEP_MEM_OTHER
+} dependency_e;
 
 `endif /* CH0RE_TYPES_SV */
 

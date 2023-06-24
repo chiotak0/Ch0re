@@ -14,9 +14,6 @@ FILELIST=filelist.f
 DEPLIST=
 DEPLIST+=$(DUT)
 
-#DEPLIST=$(wordlist, 2, $(words $(DEPLIST_)), $(DEPLIST_))
-
-
 all: simv
 
 simv: $(PACKAGES) $(TESTBENCH) $(DEPLIST)

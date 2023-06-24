@@ -22,13 +22,12 @@ module tb_ch0re_idecoder();
 		ALU_OP: assert(
 			idec_intf.o_alu_op == instr.get_alu_op()
 		) else begin
-			$display("instr.get_alu_op() = %s (h%0h)\n",
-				instr.get_alu_op().name(), instr.get_alu_op());
 
 			print_dut_output();
 			$display();
 			instr.print();
 			$fatal();
+
 		end
 
 		unique case (instr.get_fmt())
@@ -43,15 +42,65 @@ module tb_ch0re_idecoder();
 					idec_intf.o_rf_raddr2 == instr.get_rs2() &&
 					idec_intf.o_rf_waddr == instr.get_rd() &&
 
-					idec_intf.o_instr_format == IFORMAT_R &&
 					idec_intf.o_alu_mux1_sel == ALU_MUX1_SEL_REG &&
-					idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_REG
+					idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_REG &&
+					idec_intf.o_instr_format == IFORMAT_R
 				) else begin
 					print_dut_output();
 					$display();
 					instr.print();
 					$fatal();
 				end
+
+				/* ALU Control */
+
+				/* unique case (instr.get_dep())
+
+					DEP_NONE: begin
+
+						assert(
+							idec_intf.o_alu_mux1_sel == ALU_MUX1_SEL_REG &&
+							idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_REG
+						) else begin
+							print_dut_output();
+							$display();
+							instr.print();
+							$fatal();
+						end
+
+					end
+
+					DEP_EX_OTHER: begin
+
+						assert(
+							idec_intf.o_alu_mux1_sel == ALU_MUX1_SEL_REG &&
+							idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_REG
+						) else begin
+							print_dut_output();
+							$display();
+							instr.print();
+							$fatal();
+						end
+
+					end
+
+					DEP_MEM_OTHER: begin
+
+						assert(
+							idec_intf.o_alu_mux1_sel == ALU_MUX1_SEL_REG &&
+							idec_intf.o_alu_mux2_sel == ALU_MUX2_SEL_REG
+						) else begin
+							print_dut_output();
+							$display();
+							instr.print();
+							$fatal();
+						end
+
+					end
+
+					default: assert(1'b0) else $fatal();
+
+				endcase */
 
 			end
 
@@ -220,7 +269,7 @@ module tb_ch0re_idecoder();
 
 			end
 
-			default: begin
+			IFORMAT_ILLEGAL: begin
 
 				ILLEGAL_INSTRUCTION: assert(
 					idec_intf.o_illegal_instr &&
@@ -234,6 +283,8 @@ module tb_ch0re_idecoder();
 
 			end
 
+			default: assert(1'b0) else $fatal();
+
 		endcase
 
 		`DBP_PRINT_CURR();
@@ -243,19 +294,32 @@ module tb_ch0re_idecoder();
 
 	task gen_verify_all_instructions();
 
-		ITT_LOOP: foreach (ch0re_instruction_t::itt[i]) begin
+		dependency_e d = DEP_EX_OTHER;
+
+		ITT_LOOP: foreach (ch0re_instruction_t#()::itt[i]) begin
 
 			`DBP_PRINT_CURR();
 			$write("generating '%0s'\n", i);
 
-			if (instr.gen(i, REG_X2_SP, REG_X1_RA, 3, idec_intf.i_instr) == `EXIT_FAILURE) begin
+			idec_intf.i_ex_iformat = IFORMAT_I; // e.g: addi
+			idec_intf.i_ex_lsu_op = LSU_NONE;
+			idec_intf.i_ex_wen = 1'b1;
+			idec_intf.i_ex_rd = REG_X2_SP;
+
+			// idec_intf.i_mem_iformat = IFORMAT_I;
+			// idec_intf.i_mem_wen = 1'b1;
+			// idec_intf.i_mem_rd = REG_X2_SP;
+
+			// if (instr.gen(i, REG_X2_SP, REG_X2_SP, 2, idec_intf.i_instr, d) == `EXIT_FAILURE) begin
+			if (instr.gen_rand(i, idec_intf.i_instr)) begin
 
 				`DBP_PRINT_CURR();
-				$write({`DBP_FAILURE, "\n"});
+				$write({`DBP_BOLD, `DBP_FBRED, "failed", `DBP_RST,"\n"});
 				continue;
+
 			end
 
-			#5;
+			#2;
 
 			`DBP_PRINT_CURR();
 			$write("generated '%0s' successfully\n", i);
@@ -274,11 +338,12 @@ module tb_ch0re_idecoder();
 
 		$display("-----------------------------------------------------");
 		$display("idec_intf.o_illegal_instr = 1'b%0b", idec_intf.o_illegal_instr);
+		$display("idec_intf.o_pl_stall      = 1'b%0b", idec_intf.o_pl_stall);
 		$display("idec_intf.o_wen           = 1'b%0b", idec_intf.o_wen);
 		$display("-----------------------------------------------------");
-		$display("idec_intf.o_rf_raddr1     = 5'h%0x", idec_intf.o_rf_raddr1);
-		$display("idec_intf.o_rf_raddr2     = 5'h%0x", idec_intf.o_rf_raddr2);
-		$display("idec_intf.o_rf_waddr      = 5'h%0x", idec_intf.o_rf_waddr);
+		$display("idec_intf.o_rf_raddr1     = %0d", idec_intf.o_rf_raddr1);
+		$display("idec_intf.o_rf_raddr2     = %0d", idec_intf.o_rf_raddr2);
+		$display("idec_intf.o_rf_waddr      = %0d", idec_intf.o_rf_waddr);
 		$display("-----------------------------------------------------");
 		$display("idec_intf.o_instr_format  = %s (h%0x)", idec_intf.o_instr_format.name(), idec_intf.o_instr_format);
 		$display("idec_intf.o_alu_op        = %s (h%0x)", idec_intf.o_alu_op.name(), idec_intf.o_alu_op);

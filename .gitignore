@@ -10,4 +10,5 @@ riscv-opcodes/
 *novas*
 *inter.fsdb
 *sim.log
-
+*random_bytes.bin
+*.rc
