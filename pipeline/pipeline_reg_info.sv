@@ -1,5 +1,14 @@
-`ifndef REG_OFFSETS
-`define REG_OFFSETS
+`ifndef PIPELINE_REG_INFO_SV
+`define PIPELINE_REG_INFO_SV
+
+/* IF/ID */
+
+`define IFIDR_CURR_PC       0+:64
+
+`define IFIDR_SIZE          63:0
+`define PCR_SIZE            `IFIDR_SIZE
+
+/* ID/EX */
 
 `define IDEXR_IMM           0+:64
 `define IDEXR_RS1           64+:64
@@ -7,13 +16,17 @@
 `define IDEXR_PC            192+:64
 `define IDEXR_RD            256+:5
 `define IDEXR_ALU_OP        261+:4
-`define IDEXR_ALU_MUX1_SEL  265+:2
-`define IDEXR_ALU_MUX2_SEL  267
-`define IDEXR_DATA_TYPE     268+:3
-`define IDEXR_BRANCH_TARGET 271+:64
-`define IDEXR_LSU_OP  		335+:2
-`define IDEXR_WEN           337+:1
-`define IDEXR_IFORMAT       338+:3
+`define IDEXR_ALU_MUX1_SEL  265+:3
+`define IDEXR_ALU_MUX2_SEL  268+:3
+`define IDEXR_DATA_TYPE     271+:3
+`define IDEXR_BRANCH_TARGET 274+:64
+`define IDEXR_LSU_OP  		338+:2
+`define IDEXR_WEN           340+:1
+`define IDEXR_IFORMAT       341+:3
+
+`define IDEXR_SIZE          343:0
+
+/* EX/MEM */
 
 `define EXMEMR_ALU_OUT   0+:64
 `define EXMEMR_RS2	     64+:64
@@ -23,10 +36,17 @@
 `define EXMEMR_WEN       138+:1
 `define EXMEMR_IFORMAT   139+:3
 
+`define EXMEMR_SIZE      141:0
+
+/* MEM/WB */
+
 `define MEMWBR_OUT  	 0+:64
 `define MEMWBR_LSU_OP    64+:2
 `define MEMWBR_RD        66+:5
 `define MEMWBR_WEN       71+:1
 `define MEMWBR_DATA_TYPE 72+:3
+`define MEMWBR_IFORMAT   75+:3
+
+`define MEMWBR_SIZE      77:0
 
 `endif

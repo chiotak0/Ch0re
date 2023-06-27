@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
 `include "ch0re_types.sv"
-`include "pipeline/reg_offsets.sv"
+`include "pipeline/pipeline_reg_info.sv"
 `include "debug_prints.sv"
 
 `define EXMEMR_ALU_OUT   0+:64
@@ -43,7 +43,7 @@ module tb_ch0re_pipeline();
         rst_n = 1'b1;
 
         // for(;;) @(posedge clk);
-        run_print_pipeline(50);
+        run_print_pipeline(60);
 
         `DBP_PRINT_CURR();
         $write({`DBP_SUCCESS, "\n"});
@@ -60,11 +60,12 @@ module tb_ch0re_pipeline();
         data_type_e dt;
         iformat_e ifmt;
 
+        ++total_cycles;
+
         for (int cycle = 2; cycle <= total_cycles; ++cycle) begin
 
             @(posedge clk);
             $display("cycle = '%0d'", cycle);
-            #3;
 
 
             /* STAGE-1 */
@@ -103,6 +104,7 @@ module tb_ch0re_pipeline();
             ifmt = iformat_e'(dut.IDEXR[`IDEXR_IFORMAT]);
 
             $display({`DBP_BOLD, `DBP_FGREEN, "STAGE-3:", `DBP_RST});
+            $display("  - dut.STALLR = 1'b%0b", dut.STALLR);
             $display("  - dut.IDEXR[`IDEXR_IMM] = h%0h (%0d)", dut.IDEXR[`IDEXR_IMM], dut.IDEXR[`IDEXR_IMM]);
             $display("  - dut.IDEXR[`IDEXR_RS1] = h%0h (%0d)", dut.IDEXR[`IDEXR_RS1], dut.IDEXR[`IDEXR_RS1]);
             $display("  - dut.IDEXR[`IDEXR_RS2] = h%0h (%0d)", dut.IDEXR[`IDEXR_RS2], dut.IDEXR[`IDEXR_RS2]);
@@ -125,7 +127,7 @@ module tb_ch0re_pipeline();
             ifmt = iformat_e'(dut.EXMEMR[`EXMEMR_IFORMAT]);
 
             $display({`DBP_BOLD, `DBP_FGREEN, "STAGE-4:", `DBP_RST});
-            $display("  - dut.STALLR = 1'b%0b", dut.STALLR);
+            $display("  - dut.dmem_intf.i_addr = h%0h", dut.dmem_intf.i_addr);
             $display("  - dut.EXMEMR[`EXMEMR_ALU_OUT] = h%0h (%0d)", dut.EXMEMR[`EXMEMR_ALU_OUT], dut.EXMEMR[`EXMEMR_ALU_OUT]);
             $display("  - dut.EXMEMR[`EXMEMR_RS2] = %0d", dut.EXMEMR[`EXMEMR_RS2]);
             $display("  - dut.EXMEMR[`EXMEMR_RD] = %0d", dut.EXMEMR[`EXMEMR_RD]);
@@ -141,6 +143,7 @@ module tb_ch0re_pipeline();
             dt = data_type_e'(dut.MEMWBR[`MEMWBR_DATA_TYPE]);
 
             $display({`DBP_BOLD, `DBP_FGREEN, "STAGE-5:", `DBP_RST});
+            $display("  - dut.wb_data = h%0h (%0d)", dut.wb_data, dut.wb_data);
             $display("  - dut.MEMWBR[`MEMWBR_OUT] = h%0h (%0d)", dut.MEMWBR[`MEMWBR_OUT], dut.MEMWBR[`MEMWBR_OUT]);
             $display("  - dut.MEMWBR[`MEMWBR_LSU_OP] = %0s", lop.name());
             $display("  - dut.MEMWBR[`MEMWBR_RD] = %0d", dut.MEMWBR[`MEMWBR_RD]);

@@ -6,9 +6,12 @@
  */
 
 /* Exceptions:
- * instruction-address-misaligned (IALIGH=32) (think in IF if PC[1:0] != 0) /// TODO: <--
+ * instruction-address-misaligned (IALIGH=32) (if PC[1:0] != 0 ?)
  * instruction-illegal
  */
+
+`include "pipeline/pipeline_reg_info.sv"
+
 
 `define SIMULATION
 
@@ -27,20 +30,17 @@ module ch0re_pipeline #(
 );
 
 	localparam DMEM_DATA_WIDTH = 64;
+	localparam IMEM_DATA_WIDTH = 32;
 
 	/* Pipeline Registers */
 
-	logic [63:0] PCR;
-	logic [63:0] IFIDR;
-
-	`define IFIDR_CURR_PC 0+:64
+	logic [`PCR_SIZE] PCR;
+	logic [`IFIDR_SIZE] IFIDR;
 
 	mem_sync_sp_intf #(
 		.DEPTH(4096),
-		.DATA_WIDTH(32),
+		.DATA_WIDTH(IMEM_DATA_WIDTH),
 		.INIT_FILE(IMEM_FILE)
-		// .INIT_START(0),
-		// .INIT_END(IMEM_END)
 	) imem_intf (
 		.clk(clk)
 	);
@@ -48,21 +48,7 @@ module ch0re_pipeline #(
 	mem_sync_sp imem(imem_intf);
 
 
-	logic [343:0] IDEXR;
-
-	`define IDEXR_IMM           0+:64
-	`define IDEXR_RS1           64+:64
-	`define IDEXR_RS2           128+:64
-	`define IDEXR_PC            192+:64
-	`define IDEXR_RD            256+:5   //////
-	`define IDEXR_ALU_OP        261+:4   //////
-	`define IDEXR_ALU_MUX1_SEL  265+:3
-	`define IDEXR_ALU_MUX2_SEL  268+:3
-	`define IDEXR_DATA_TYPE     271+:3
-	`define IDEXR_BRANCH_TARGET 274+:64
-	`define IDEXR_LSU_OP  		338+:2   //////
-	`define IDEXR_WEN           340+:1   //////
-	`define IDEXR_IFORMAT       341+:3   //////
+	logic [`IDEXR_SIZE] IDEXR;
 
 	regfile_2r1w_intf #(
 		.DATA_WIDTH(64)
@@ -80,28 +66,13 @@ module ch0re_pipeline #(
 	ch0re_idecoder idec(idec_intf);
 
 
-	logic [141:0] EXMEMR;
-
-	`define EXMEMR_ALU_OUT   0+:64
-	`define EXMEMR_RS2	     64+:64
-	`define EXMEMR_RD	     128+:5
-	`define EXMEMR_LSU_OP    133+:2
-	`define EXMEMR_DATA_TYPE 135+:3
-	`define EXMEMR_WEN       138+:1
-	`define EXMEMR_IFORMAT   139+:3
+	logic [`EXMEMR_SIZE] EXMEMR;
 
 	ch0re_alu_intf alu_intf();
 	ch0re_alu alu(alu_intf);
 
 
-	logic [77:0] MEMWBR;
-
-	`define MEMWBR_OUT  	 0+:64
-	`define MEMWBR_LSU_OP    64+:2
-	`define MEMWBR_RD        66+:5
-	`define MEMWBR_WEN       71+:1
-	`define MEMWBR_DATA_TYPE 72+:3
-	`define MEMWBR_IFORMAT   75+:3
+	logic [`MEMWBR_SIZE] MEMWBR;
 
 	mem_sync_sp_rvdmem_intf #(
 		.DEPTH(4096),
@@ -118,12 +89,29 @@ module ch0re_pipeline #(
 
 	/*********************************/
 
-	logic [63:0] next_pc;
+	/* PC handling */
+
+	logic [63:0] new_offset;
 	logic [63:0] branch_target;
 
-	logic STALLR;  // stall pipeline (stages 1,2) register
-	logic [10:0] EXHR;  // 2 + 3 + 5 + 1
-	logic [8:0] MEMHR;  // 3 + 5 + 1
+	/* pipeline stall (IF, ID, EX) */
+
+	logic STALLR;
+
+	/* disable instructions in {IF,ID} if a branch was taken */
+
+	logic DISIFR;
+	logic branch_taken;
+
+	/*  */
+
+	logic RS2FW1R;
+	logic RS2FW2R;
+
+	/* history registers (dependencies) to reduce wires between stages */
+
+	logic [10:0] EXHR;
+	logic [8:0] MEMHR;
 
 	`define EXHR_LSU_OP 0+:2
 	`define EXHR_IFMT   2+:3
@@ -150,77 +138,22 @@ module ch0re_pipeline #(
 
 				IFIDR[`IFIDR_CURR_PC] <= PCR;
 
-				unique case (IDEXR[`IDEXR_ALU_OP])
-
-					ALU_EQ: begin
-
-						if (alu_intf.o_flag_zero) begin
-							PCR <= IDEXR[`IDEXR_BRANCH_TARGET];
-						end
-						else begin
-							PCR <= PCR + 'h4;
-						end
-
-					end
-
-					ALU_NE: begin
-
-						if (!alu_intf.o_flag_zero) begin
-							PCR <= IDEXR[`IDEXR_BRANCH_TARGET];
-						end
-						else begin
-							PCR <= PCR + 'h4;
-						end
-
-					end
-
-					ALU_LT, ALU_LTU: begin
-
-						if (alu_intf.o_flag_less) begin
-							PCR <= IDEXR[`IDEXR_BRANCH_TARGET];
-						end
-						else begin
-							PCR <= PCR + 'h4;
-						end
-
-					end
-
-					ALU_GE, ALU_GEU: begin
-
-						if (!alu_intf.o_flag_less) begin
-							PCR <= IDEXR[`IDEXR_BRANCH_TARGET];
-						end
-						else begin
-							PCR <= PCR + 'h4;
-						end
-
-					end
-
-					default: begin
-
-						unique case (opcode_e'(imem_intf.o_rdata[6:2]))
-
-							OPCODE_JAL,
-							OPCODE_JALR: PCR <= branch_target;
-
-							default: begin PCR <= PCR + 'h4; $write("time = %0t\n\n", $time);end
-
-						endcase
-
-					end
-
-				endcase
-
+				if ((opcode_e'(imem_intf.o_rdata[6:2]) == OPCODE_JAL) | (opcode_e'(imem_intf.o_rdata[6:2]) == OPCODE_JALR)) begin
+					PCR <= branch_target;
+				end
+				else if (branch_taken) begin
+					PCR <= IDEXR[`IDEXR_BRANCH_TARGET];
+				end
+				else begin
+					PCR <= PCR + 'h4;
+				end
 			end
 			else begin /* Stall */
-				// IFIDR <= IFIDR;
 				PCR <= PCR;
 				IFIDR <= IFIDR;
 			end
-
 		end
-
-	end: stage_1_if
+	end
 
 	always_comb begin
 
@@ -237,12 +170,41 @@ module ch0re_pipeline #(
 		// synthesizable memory
 		`endif
 
-		// next_pc = (!idec_intf.o_pl_stall) ? PCR + 'h4 : PCR;
+		unique case (IDEXR[`IDEXR_ALU_OP])
 
+			ALU_EQ: begin
+				if (alu_intf.o_flag_zero) begin
+					branch_taken = 1'b1;
+				end
+			end
+
+			ALU_NE: begin
+				if (!alu_intf.o_flag_zero) begin
+					branch_taken = 1'b1;
+				end
+			end
+
+			ALU_LT, ALU_LTU: begin
+				if (alu_intf.o_flag_less) begin
+					branch_taken = 1'b1;
+				end
+			end
+
+			ALU_GE, ALU_GEU: begin
+				if (!alu_intf.o_flag_less) begin
+					branch_taken = 1'b1;
+				end
+			end
+
+			default: branch_taken = 1'b0;
+
+		endcase
 	end
 
 
 	/* STAGE-2: 'IDECODE' */
+
+	logic store_rs2_fwd_wb;
 
 	always_ff @(posedge clk) begin: stage_2_id
 
@@ -252,14 +214,18 @@ module ch0re_pipeline #(
 			STALLR <= 1'b0;
 			EXHR <= 'h0;
 			MEMHR <= 'h0;
+			RS2FW1R <= 'h0;
 		end
 		else begin
 
 			// idec_intf.o_illegal_instr (future: precise exceptions?)
 
 			STALLR <= idec_intf.o_pl_stall;
+			RS2FW1R <= idec_intf.o_store_rs2_wb_fwd;
 
 			if (!STALLR) begin
+
+				/* handling bypass{WB->ID} and x0 */
 
 				if (idec_intf.o_rf_raddr1) begin
 
@@ -289,57 +255,61 @@ module ch0re_pipeline #(
 					IDEXR[`IDEXR_RS2] <= 'b0;
 				end
 
+				/***********************************/
+
 				IDEXR[`IDEXR_PC] <= IFIDR[`IFIDR_CURR_PC];
-				IDEXR[`IDEXR_RD] <= idec_intf.o_rf_waddr; //////
+				IDEXR[`IDEXR_RD] <= idec_intf.o_rf_waddr;
 
 				IDEXR[`IDEXR_IMM] <= idec_intf.o_imm;
 				IDEXR[`IDEXR_ALU_OP] <= idec_intf.o_alu_op;
-				IDEXR[`IDEXR_IFORMAT] <= idec_intf.o_instr_format;  //////
+				IDEXR[`IDEXR_IFORMAT] <= idec_intf.o_instr_format;
 				IDEXR[`IDEXR_ALU_MUX1_SEL] <= idec_intf.o_alu_mux1_sel;
 				IDEXR[`IDEXR_ALU_MUX2_SEL] <= idec_intf.o_alu_mux2_sel;
 
 				IDEXR[`IDEXR_DATA_TYPE] <= idec_intf.o_data_type;
 				IDEXR[`IDEXR_BRANCH_TARGET] <= branch_target;
-				IDEXR[`IDEXR_LSU_OP] <= idec_intf.o_lsu_op; //////
-				IDEXR[`IDEXR_WEN] <= idec_intf.o_wen; //////
+				IDEXR[`IDEXR_LSU_OP] <= idec_intf.o_lsu_op;
+				IDEXR[`IDEXR_WEN] <= idec_intf.o_wen;
 
 				EXHR[`EXHR_LSU_OP] <= idec_intf.o_lsu_op;
 				EXHR[`EXHR_IFMT] <= idec_intf.o_instr_format;
 				EXHR[`EXHR_WEN] <= idec_intf.o_wen;
 				EXHR[`EXHR_RD] <= idec_intf.o_rf_waddr;
 
+				/* history registers update */
+
 				MEMHR[`MEMHR_IFMT] <= EXHR[`EXHR_IFMT];
 				MEMHR[`MEMHR_WEN] <= EXHR[`EXHR_WEN];
 				MEMHR[`MEMHR_RD] <= EXHR[`EXHR_RD];
-
 			end
 			else begin
 				IDEXR <= IDEXR;
 				STALLR <= 1'b0;
+				EXHR <= EXHR;
+				MEMHR <= MEMHR;
 			end
-
 		end
-
-	end: stage_2_id
+	end
 
 	always_comb begin
 
 		idec_intf.i_instr = imem_intf.o_rdata;
+		idec_intf.i_br_taken = branch_taken;
 
 		rf_intf.i_raddr1 = idec_intf.o_rf_raddr1;
 		rf_intf.i_raddr2 = idec_intf.o_rf_raddr2;
+		store_rs2_fwd_wb = idec_intf.o_store_rs2_wb_fwd;
 
 		branch_target = IFIDR[`IFIDR_CURR_PC] + idec_intf.o_imm; /// TODO: add support for 'jalr'
-
 	end
 
 
 	/* STAGE-3: 'EXECUTE' */
 
-	assign idec_intf.i_ex_rd = EXHR[`EXHR_RD];
-	assign idec_intf.i_ex_wen = EXHR[`EXHR_WEN];
-	assign idec_intf.i_ex_lsu_op = EXHR[`EXHR_LSU_OP];
-	assign idec_intf.i_ex_iformat = EXHR[`EXHR_IFMT];
+	assign idec_intf.i_ex_rd = IDEXR[`IDEXR_RD]; //EXHR[`EXHR_RD];
+	assign idec_intf.i_ex_wen = IDEXR[`IDEXR_WEN]; //EXHR[`EXHR_WEN];
+	assign idec_intf.i_ex_lsu_op = IDEXR[`IDEXR_LSU_OP]; //EXHR[`EXHR_LSU_OP];
+	assign idec_intf.i_ex_iformat = IDEXR[`IDEXR_IFORMAT]; //EXHR[`EXHR_IFMT];
 
 	assign alu_intf.i_op = alu_op_e'(IDEXR[`IDEXR_ALU_OP]);
 
@@ -347,29 +317,43 @@ module ch0re_pipeline #(
 
 		if (!rst_n) begin
 			EXMEMR <= 'b0;
+			RS2FW2R <= 'b0;
 		end
 		else begin
+
+			RS2FW2R <= RS2FW1R;
 
 			if (!STALLR) begin
 
 				EXMEMR[`EXMEMR_ALU_OUT] <= alu_intf.o_res;
 				EXMEMR[`EXMEMR_IFORMAT] <= IDEXR[`IDEXR_IFORMAT];
-				EXMEMR[`EXMEMR_RS2] <= IDEXR[`IDEXR_RS2];
 				EXMEMR[`EXMEMR_RD] <= IDEXR[`IDEXR_RD];
 				EXMEMR[`EXMEMR_LSU_OP] <= IDEXR[`IDEXR_LSU_OP];
 				EXMEMR[`EXMEMR_DATA_TYPE] <= IDEXR[`IDEXR_DATA_TYPE];
 				EXMEMR[`EXMEMR_WEN] <= IDEXR[`IDEXR_WEN];
 
+				// In EX stage, IFORMAT_S MUX2_SEL is always IMM. What if 'rs2' has a dependency though?
+
+				if (IDEXR[`IDEXR_LSU_OP] == LSU_STORE) begin
+
+					unique case (IDEXR[`IDEXR_ALU_MUX2_SEL])
+
+						ALU_MUX2_SEL_FWD_WB: EXMEMR[`EXMEMR_RS2] <= wb_data;
+						ALU_MUX2_SEL_FWD_MEM: EXMEMR[`EXMEMR_RS2] <= EXMEMR[`EXMEMR_ALU_OUT];
+						default: EXMEMR[`EXMEMR_RS2] <= IDEXR[`IDEXR_RS2];
+					endcase
+				end
+				else begin
+					EXMEMR[`EXMEMR_RS2] <= IDEXR[`IDEXR_RS2];
+				end
 			end
 			else begin
 				EXMEMR <= EXMEMR;
 				EXMEMR[`EXMEMR_LSU_OP] <= LSU_NONE;
 				EXMEMR[`EXMEMR_WEN] <= 1'b0;
 			end
-
 		end
-
-	end: stage_3_ex
+	end
 
 	always_comb begin
 
@@ -391,14 +375,30 @@ module ch0re_pipeline #(
 
 			ALU_MUX2_SEL_IMM:      alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
 			ALU_MUX2_SEL_REG:      alu_intf.i_s2 = IDEXR[`IDEXR_RS2];
-			ALU_MUX2_SEL_FWD_WB:   alu_intf.i_s2 = wb_data;
-			ALU_MUX2_SEL_FWD_MEM:  alu_intf.i_s2 = EXMEMR[`EXMEMR_ALU_OUT];
+
+			ALU_MUX2_SEL_FWD_WB: begin
+
+				if (IDEXR[`IDEXR_LSU_OP] != LSU_STORE) begin
+					alu_intf.i_s2 = wb_data;
+				end
+				else begin
+					alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
+				end
+			end
+
+			ALU_MUX2_SEL_FWD_MEM: begin
+
+				if (IDEXR[`IDEXR_LSU_OP] != LSU_STORE) begin
+					alu_intf.i_s2 = EXMEMR[`EXMEMR_ALU_OUT];
+				end
+				else begin
+					alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
+				end
+			end
 			ALU_MUX2_SEL_IMM_FOUR: alu_intf.i_s2 = 'h4;
 
 			default:;
-
 		endcase
-
 	end
 
 
@@ -406,13 +406,9 @@ module ch0re_pipeline #(
 
 	logic new_wen;
 
-	// assign idec_intf.i_mem_rd = EXMEMR[`EXMEMR_RD];
-	// assign idec_intf.i_mem_wen = EXMEMR[`EXMEMR_WEN];
-	// assign idec_intf.i_mem_iformat = EXMEMR[`EXMEMR_IFORMAT];
-
-	assign idec_intf.i_mem_rd = MEMHR[`MEMHR_RD];
-	assign idec_intf.i_mem_wen = MEMHR[`MEMHR_WEN];
-	assign idec_intf.i_mem_iformat = MEMHR[`MEMHR_IFMT];
+	assign idec_intf.i_mem_rd = EXMEMR[`EXMEMR_RD]; //MEMHR[`MEMHR_RD];
+	assign idec_intf.i_mem_wen = EXMEMR[`EXMEMR_WEN]; //MEMHR[`MEMHR_WEN];
+	assign idec_intf.i_mem_iformat = EXMEMR[`EXMEMR_IFORMAT]; //MEMHR[`MEMHR_IFMT];
 
 	always_ff @(posedge clk) begin: stage_4_mem
 
@@ -427,10 +423,8 @@ module ch0re_pipeline #(
 			MEMWBR[`MEMWBR_WEN] <= new_wen;
 			MEMWBR[`MEMWBR_DATA_TYPE] <= EXMEMR[`EXMEMR_DATA_TYPE];
 			MEMWBR[`MEMWBR_IFORMAT] <= EXMEMR[`EXMEMR_IFORMAT];
-
 		end
-
-	end: stage_4_mem
+	end
 
 	always_comb begin
 
@@ -455,10 +449,16 @@ module ch0re_pipeline #(
 			new_wen = EXMEMR[`EXMEMR_WEN];
 		end
 
+		`ifdef SIMULATION
 		dmem_intf.i_addr = EXMEMR[`EXMEMR_ALU_OUT];
-		dmem_intf.i_wdata = EXMEMR[`EXMEMR_RS2];
+		`endif
 
+		if (!RS2FW2R)
+			dmem_intf.i_wdata = EXMEMR[`EXMEMR_RS2];
+		else
+			dmem_intf.i_wdata = wb_data;
 	end
+
 
 	/* STAGE-5: 'WRITE-BACK' */
 
@@ -500,8 +500,7 @@ module ch0re_pipeline #(
 
 		rf_intf.i_waddr = MEMWBR[`MEMWBR_RD];
 		rf_intf.i_wdata = wb_data;
-
-	end: stage_5_wb
+	end
 
 endmodule: ch0re_pipeline
 

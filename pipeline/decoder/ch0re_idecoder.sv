@@ -6,6 +6,7 @@ interface ch0re_idecoder_intf(
 );
 
 	logic [31:0] i_instr;
+	logic i_br_taken;
 
 	/* Bypassing */
 
@@ -45,6 +46,7 @@ interface ch0re_idecoder_intf(
 
 	/* to Pipeline Control */
 
+	logic o_store_rs2_wb_fwd;
 	logic o_pl_stall;
 
 endinterface: ch0re_idecoder_intf
@@ -100,13 +102,19 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 			intf.o_illegal_instr = 1'b0;
 			intf.o_lsu_op = LSU_NONE;
 			intf.o_data_type = DTYPE_DOUBLE;
-			dis_ninstr = 1'b0;
 
-			if (!DISNIR) begin
+			if (!DISNIR & !intf.i_br_taken) begin
 				intf.o_wen = 1'b1;
 			end
 			else begin
 				intf.o_wen = 1'b0;
+			end
+
+			if ((opcode == OPCODE_JALR) | (opcode == OPCODE_JAL) | intf.i_br_taken) begin
+				dis_ninstr = 1'b1;
+			end
+			else begin
+				dis_ninstr = 1'b0;
 			end
 
 			unique case (opcode)
@@ -156,8 +164,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 						end
 
 					endcase
-
-				end: op_op32
+				end
 
 				OPCODE_OP_IMM32: begin: op_op_imm32 // "w"
 
@@ -205,8 +212,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 						end
 
 					endcase
-
-				end: op_op_imm32
+				end
 
 				OPCODE_OP: begin: op_op
 
@@ -256,8 +262,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 						default:;
 
 					endcase
-
-				end: op_op
+				end
 
 				OPCODE_OP_IMM: begin: op_imm
 
@@ -309,8 +314,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 						default:;
 
 					endcase
-
-				end: op_imm
+				end
 
 				OPCODE_LOAD: begin: op_load
 
@@ -328,8 +332,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 						intf.o_instr_format = IFORMAT_NONE;
 						intf.o_wen = 1'b0;
 					end
-
-				end: op_load
+				end
 
 				OPCODE_STORE: begin: op_store
 
@@ -348,9 +351,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 						intf.o_instr_format = IFORMAT_NONE;
 						intf.o_wen = 1'b0;
 					end
-
-
-				end: op_store
+				end
 
 				OPCODE_BRANCH: begin: op_branch
 
@@ -366,8 +367,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 						intf.o_illegal_instr = 1'b1;
 						intf.o_instr_format = IFORMAT_NONE;
 					end
-
-				end: op_branch
+				end
 
 				OPCODE_JAL: begin: op_jal
 
@@ -375,11 +375,9 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					intf.o_instr_format = IFORMAT_J;
 					intf.o_alu_op = ALU_ADD;
-					dis_ninstr = 1'b1;
 
 					intf.o_imm = {{44{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
-
-				end: op_jal
+				end
 
 				OPCODE_JALR: begin :op_jalr
 
@@ -387,7 +385,6 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					intf.o_instr_format = IFORMAT_I;
 					intf.o_alu_op = ALU_ADD;
-					dis_ninstr = 1'b1;
 
 					intf.o_imm = {{{52{instr[31]}}}, instr[31:20]};
 
@@ -396,8 +393,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 						intf.o_instr_format = IFORMAT_NONE;
 						intf.o_wen = 1'b0;
 					end
-
-				end: op_jalr
+				end
 
 				OPCODE_LUI: begin: op_lui
 
@@ -407,8 +403,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 					intf.o_alu_op = ALU_ADD;
 
 					intf.o_imm = {{32{instr[31]}}, instr[31:12], 12'b0};
-
-				end: op_lui
+				end
 
 				OPCODE_AUIPC: begin: op_auipc  
 
@@ -418,8 +413,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 					intf.o_alu_op = ALU_ADD;
 
 					intf.o_imm = {{32{instr[31]}}, instr[31:12], 12'b0};
-
-				end: op_auipc
+				end
 
 				default: begin
 
@@ -431,7 +425,6 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 					intf.o_alu_op = ALU_SLTU;
 					intf.o_imm = 64'h0;
 					intf.o_wen = 1'b0;
-
 				end
 
 			endcase
@@ -445,24 +438,34 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 		if (intf.o_illegal_instr) begin: illegal_instr
 			intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
 			intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
-			intf.o_pl_stall = 1'b1;
+			intf.o_store_rs2_wb_fwd = 1'b0;
+			intf.o_pl_stall = 1'b0;
 		end
 		else begin
 
 			intf.o_pl_stall = 1'b0;
+			intf.o_store_rs2_wb_fwd = 1'b0;
 
 			unique case (intf.o_instr_format)
 
-			IFORMAT_R,
-			IFORMAT_S,
-			IFORMAT_B,
-			IFORMAT_I: begin
+			IFORMAT_R,  // rs1, rs2
+			IFORMAT_S,  // rs1, rs2
+			IFORMAT_B,  // rs1, rs2
+			IFORMAT_I: begin  // rs1
 
 				if (opcode == OPCODE_JALR) begin  /// TODO: STALL if 'rs1' is needed
 					intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
 					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM_FOUR;
 				end
 				else begin
+
+					/* IFORMAT_R: rs1, rs2
+					 * IFORMAT_S: rs1, rs2 (*only rs1 truly needed for ALU op*)
+					 * IFORMAT_B: rs1, rs2
+					 * IFORAMT_I: rs1, Imm
+					 */
+
+					/* 'rs1' handling */
 
 					if ((intf.i_ex_rd == intf.o_rf_raddr1) & (intf.i_ex_wen)) begin
 
@@ -485,40 +488,36 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 						intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
 					end
 
-					if ((intf.i_ex_rd == intf.o_rf_raddr2) & (intf.i_ex_wen)) begin
+					/* 'rs2' handling */
 
-						if (intf.i_ex_lsu_op == LSU_LOAD) begin
+					if (intf.o_instr_format == IFORMAT_I) begin
+						intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+					end
+					else if ((intf.i_ex_rd == intf.o_rf_raddr2) & (intf.i_ex_wen)) begin
+
+						if ((intf.i_ex_lsu_op == LSU_LOAD) & (intf.o_instr_format != LSU_STORE)) begin
 							intf.o_pl_stall = 1'b1;
 							intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_WB;
+						end
+						else if ((intf.i_ex_lsu_op == LSU_LOAD) & (intf.o_instr_format == LSU_STORE)) begin
+							intf.o_store_rs2_wb_fwd = 1'b1;
+							intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
 						end
 						else if ((intf.i_ex_iformat != IFORMAT_B) & (intf.i_ex_iformat != IFORMAT_S)) begin
 							intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_MEM;
 						end
-						else if ((intf.o_instr_format == IFORMAT_S) | (intf.o_instr_format == IFORMAT_I)) begin
-							intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
-						end
 						else begin
 							intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
 						end
-
 					end
 					else if ((intf.i_mem_rd == intf.o_rf_raddr2) & (intf.i_mem_wen) &
 							 (intf.i_mem_iformat != IFORMAT_B) & (intf.i_mem_iformat != IFORMAT_S)) begin
 						intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_WB;
 					end
 					else begin
-
-						if ((intf.o_instr_format == IFORMAT_S) | (intf.o_instr_format == IFORMAT_I)) begin
-							intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
-						end
-						else begin
-							intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
-						end
-
+						intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
 					end
-
 				end
-
 			end
 
 			IFORMAT_J: begin /* No bypass */
