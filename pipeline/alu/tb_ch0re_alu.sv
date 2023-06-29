@@ -36,12 +36,10 @@ module tb_ch0re_alu();
 
 			`DBP_PRINT_CURR();
 			$write("'%0s' has correct results\n", intf.i_op.name());
-
 		end
 
 		`DBP_PRINT_CURR();
 		$write({`DBP_SUCCESS, "\n"});
-
 	endtask
 
 	task gen_verify_all_alu_ops();
@@ -107,9 +105,7 @@ module tb_ch0re_alu();
 					alu_op.print();
 					print_dut();
 					$fatal();
-
 				end
-
 			end
 
 			ALU_EQ,  ALU_NE,
@@ -126,15 +122,11 @@ module tb_ch0re_alu();
 					alu_op.print();
 					print_dut();
 					$fatal();
-
 				end
-
 			end
 
 			default:;
-
 		endcase
-
 	endtask
 
 	task print_dut();
@@ -149,8 +141,7 @@ module tb_ch0re_alu();
 		$display("intf.o_flag_zero = 1'b%1b", intf.o_flag_zero);
 		$display("intf.o_flag_less   = 1'b%1b", intf.o_flag_less);
 		$display("-----------------------------");
-
 	endtask
 
-endmodule: tb_ch0re_alu
+endmodule
 

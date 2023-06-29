@@ -23,8 +23,9 @@
 `define IDEXR_LSU_OP  		338+:2
 `define IDEXR_WEN           340+:1
 `define IDEXR_IFORMAT       341+:3
+`define IDEXR_I64           344+:1
 
-`define IDEXR_SIZE          343:0
+`define IDEXR_SIZE          344:0
 
 /* EX/MEM */
 
@@ -40,7 +41,7 @@
 
 /* MEM/WB */
 
-`define MEMWBR_OUT  	 0+:64
+`define MEMWBR_ALU_OUT 	 0+:64
 `define MEMWBR_LSU_OP    64+:2
 `define MEMWBR_RD        66+:5
 `define MEMWBR_WEN       71+:1
@@ -48,5 +49,16 @@
 `define MEMWBR_IFORMAT   75+:3
 
 `define MEMWBR_SIZE      77:0
+
+/* Dependency History */
+
+`define EXHR_LSU_OP 0+:2
+`define EXHR_IFMT   2+:3
+`define EXHR_RD     5+:5
+`define EXHR_WEN    10+:1
+
+`define MEMHR_IFMT 0+:3
+`define MEMHR_RD   3+:5
+`define MEMHR_WEN  8+:1
 
 `endif

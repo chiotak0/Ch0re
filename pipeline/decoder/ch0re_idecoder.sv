@@ -35,6 +35,7 @@ interface ch0re_idecoder_intf(
 	logic [63:0] o_imm;
 	iformat_e o_instr_format;
 	alu_op_e o_alu_op;
+	logic o_i64;
 
 	alu_mux1_sel_e o_alu_mux1_sel;
 	alu_mux2_sel_e o_alu_mux2_sel;
@@ -70,7 +71,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 	assign opcode = opcode_e'(instr[6:2]);
 
 
-	always_ff @(posedge intf.clk, negedge intf.rst_n) begin: dis_ninstr_after_jump
+	always_ff @(posedge intf.clk) begin: dis_ninstr_after_jump
 
 		if (!intf.rst_n) begin
 			DISNIR <= 1'b0;
@@ -79,7 +80,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 			DISNIR <= dis_ninstr;
 		end
 
-	end: dis_ninstr_after_jump
+	end
 
 
 	always_comb begin: decoding
@@ -96,12 +97,14 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 			intf.o_imm = 64'h0;
 			intf.o_wen = 1'b0;
 			dis_ninstr = 1'b1;
+			intf.o_i64 = 1'b0;
 		end
 		else begin
 
 			intf.o_illegal_instr = 1'b0;
 			intf.o_lsu_op = LSU_NONE;
 			intf.o_data_type = DTYPE_DOUBLE;
+			intf.o_i64 = 1'b0;
 
 			if (!DISNIR & !intf.i_br_taken) begin
 				intf.o_wen = 1'b1;
@@ -124,6 +127,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 					/* rd = (rs1[31:0] op rs2[31:0])[31:0] */
 
 					intf.o_instr_format = IFORMAT_R;
+					intf.o_i64 = 1'b1;
 
 					unique case (instr[14:12])
 
@@ -171,7 +175,9 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 					/* rd = (rs1 op imm)[31:0] */
 
 					intf.o_instr_format = IFORMAT_I;
-					intf.o_imm = {{59{1'b0}}, instr[24:20]};
+					intf.o_i64 = 1'b1;
+
+					intf.o_imm = {{52{instr[31]}}, instr[31:20]};
 
 					unique case (instr[14:12])
 
@@ -429,8 +435,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 			endcase
 		end
-
-	end: decoding
+	end
 
 
 	always_comb begin: alu_muxes_control_signals
@@ -467,7 +472,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 
 					/* 'rs1' handling */
 
-					if ((intf.i_ex_rd == intf.o_rf_raddr1) & (intf.i_ex_wen)) begin
+					if ((intf.i_ex_rd == intf.o_rf_raddr1) & (intf.i_ex_rd != 'h0) & (intf.i_ex_wen)) begin
 
 						if (intf.i_ex_lsu_op == LSU_LOAD) begin
 							intf.o_pl_stall = 1'b1;
@@ -480,8 +485,8 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 							intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
 						end
 					end
-					else if ((intf.i_mem_rd == intf.o_rf_raddr1) & (intf.i_mem_wen) &
-							 (intf.i_mem_iformat != IFORMAT_B) & (intf.i_mem_iformat != IFORMAT_S)) begin
+					else if ((intf.i_mem_rd == intf.o_rf_raddr1) & (intf.i_mem_rd != 'h0) & (intf.i_mem_wen) &
+							(intf.i_mem_iformat != IFORMAT_B) & (intf.i_mem_iformat != IFORMAT_S)) begin
 						intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_WB;
 					end
 					else begin
@@ -493,13 +498,13 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 					if (intf.o_instr_format == IFORMAT_I) begin
 						intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
 					end
-					else if ((intf.i_ex_rd == intf.o_rf_raddr2) & (intf.i_ex_wen)) begin
+					else if ((intf.i_ex_rd == intf.o_rf_raddr2) & (intf.i_ex_rd != 'h0) & (intf.i_ex_wen)) begin
 
-						if ((intf.i_ex_lsu_op == LSU_LOAD) & (intf.o_instr_format != LSU_STORE)) begin
+						if ((intf.i_ex_lsu_op == LSU_LOAD) & (intf.o_instr_format != IFORMAT_S)) begin
 							intf.o_pl_stall = 1'b1;
 							intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_WB;
 						end
-						else if ((intf.i_ex_lsu_op == LSU_LOAD) & (intf.o_instr_format == LSU_STORE)) begin
+						else if ((intf.i_ex_lsu_op == LSU_LOAD) & (intf.o_instr_format == IFORMAT_S)) begin
 							intf.o_store_rs2_wb_fwd = 1'b1;
 							intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
 						end
@@ -510,7 +515,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 							intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
 						end
 					end
-					else if ((intf.i_mem_rd == intf.o_rf_raddr2) & (intf.i_mem_wen) &
+					else if ((intf.i_mem_rd == intf.o_rf_raddr2) & (intf.i_mem_rd != 'h0) & (intf.i_mem_wen) &
 							 (intf.i_mem_iformat != IFORMAT_B) & (intf.i_mem_iformat != IFORMAT_S)) begin
 						intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_WB;
 					end
@@ -546,7 +551,6 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 			endcase
 
 		end
-
-	end: alu_muxes_control_signals
+	end
 
 endmodule: ch0re_idecoder

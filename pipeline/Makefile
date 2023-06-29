@@ -5,6 +5,10 @@ SHELL:=/bin/bash
 
 CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
 
+ifeq ($(DEBUG), 1)
+	CFLAGS+= +define+DEBUG
+endif
+
 
 DUT=ch0re_pipeline.sv
 TESTBENCH=tb_$(DUT)

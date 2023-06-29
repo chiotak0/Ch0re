@@ -12,3 +12,4 @@ riscv-opcodes/
 *sim.log
 *random_bytes.bin
 *.rc
+out

@@ -1,0 +1,116 @@
+Magic 271485
+Revision Verdi_T-2022.06-SP2
+
+; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
+viewPort 0 25 1272 659 161 65
+
+; File list:
+; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
+openDirFile -d / "" "/home/orchiot/Ch0re/pipeline/inter.fsdb"
+
+; file time scale:
+; fileTimeScale ### s|ms|us|ns|ps
+
+; signal spacing:
+signalSpacing 5
+
+; windowTimeUnit is used for zoom, cursor & marker
+windowTimeUnit 1ns
+
+; waveform viewport range
+zoom 870.178573 1035.357144 1n
+cursor 910.000000
+marker 0.000000
+
+; user define markers
+; userMarker time_pos marker_name color linestyle
+; visible top row signal index
+top 0
+; marker line index
+markerPos 13
+
+; counter signal list
+; addCounterSig -Rising|-Falling|-AnyChange signal
+activeDirFile "" "/home/orchiot/Ch0re/pipeline/inter.fsdb"
+
+addCounterSig -Rising "/tb_ch0re_pipeline/dut/idec/intf/clk"
+
+; rename signal list
+; addRenameSig new_name org_name
+
+addRenameSig "/tb_ch0re_pipeline/dut/IDEXR[IFORMAT]" "/tb_ch0re_pipeline/dut/IDEXR[343:341]" keep
+
+; rename signal list
+; addRenameSig new_name org_name
+
+addRenameSig "/tb_ch0re_pipeline/dut/IDEXR[MUX1_SEL]" "/tb_ch0re_pipeline/dut/IDEXR[267:265]" keep
+
+; rename signal list
+; addRenameSig new_name org_name
+
+addRenameSig "/tb_ch0re_pipeline/dut/IDEXR[MUX2_SEL]" "/tb_ch0re_pipeline/dut/IDEXR[270:268]" keep
+
+; counter signal list
+; addCounterSig -Rising|-Falling|-AnyChange signal
+
+addCounterSig -Rising "/tb_ch0re_pipeline/dut/idec/intf/clk"
+
+; event list
+; addEvent event_name event_expression
+; curEvent event_name
+
+
+
+COMPLEX_EVENT_BEGIN
+
+
+COMPLEX_EVENT_END
+
+
+
+; toolbar current search type
+; curSTATUS search_type
+curSTATUS ByChange
+
+
+addGroup "G1"
+activeDirFile "" "/home/orchiot/Ch0re/pipeline/inter.fsdb"
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/PCR[63:0]
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/IFIDR[63:0]
+addSignal -h 15 /tb_ch0re_pipeline/dut/STALLR
+addGroup "G3"
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/wb_data[63:0]
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/read_data[63:0]
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/dmem/intf/i_addr[11:0]
+addSubGroup "intf(ch0re_alu_intf)"
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED /tb_ch0re_pipeline/dut/alu/intf/i_op[3:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/alu/intf/i_s1[63:0]
+addSignal -c ID_YELLOW5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/alu/intf/i_s2[63:0]
+addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 /tb_ch0re_pipeline/dut/alu/intf/o_flag_zero
+addSignal -h 15 /tb_ch0re_pipeline/dut/idec/intf/i_br_taken
+endSubGroup "intf(ch0re_alu_intf)"
+addSignal -c ID_PURPLE5 -ls solid -lw 1 -h 15 /tb_ch0re_pipeline/dut/idec/intf/clk
+addSignal -h 15 -UNSIGNED -UDEC /tb_ch0re_pipeline/dut/idec/intf/RisingCounter_clk[63:0]
+addSignal -c ID_ORANGE5 -ls solid -lw 1 -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/idec/intf/i_instr[31:0]
+addSignal -h 15 -UNSIGNED /tb_ch0re_pipeline/dut/idec/intf/o_alu_mux1_sel[2:0]
+addSignal -h 15 -UNSIGNED /tb_ch0re_pipeline/dut/idec/intf/o_alu_mux2_sel[2:0]
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED /tb_ch0re_pipeline/dut/idec/intf/o_instr_format[2:0]
+addSignal -c ID_RED5 -ls solid -lw 1 -h 15 /tb_ch0re_pipeline/dut/idec/intf/o_wen
+addSignal -h 15 /tb_ch0re_pipeline/dut/idec/intf/o_pl_stall
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/idec/intf/o_rf_waddr[4:0]
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/idec/intf/i_ex_rd[4:0]
+addSignal -c ID_GREEN5 -ls solid -lw 1 -h 15 -UNSIGNED /tb_ch0re_pipeline/dut/idec/intf/i_ex_iformat[2:0]
+addSignal -h 15 -UNSIGNED /tb_ch0re_pipeline/dut/idec/intf/i_ex_lsu_op[1:0]
+addSignal -h 15 /tb_ch0re_pipeline/dut/idec/intf/i_ex_wen
+addSignal -c ID_PURPLE6 -ls solid -lw 1 -h 15 /tb_ch0re_pipeline/dut/idec/intf/i_mem_wen
+addSignal -c ID_PURPLE6 -ls solid -lw 1 -h 15 -UNSIGNED /tb_ch0re_pipeline/dut/idec/intf/i_mem_iformat[2:0]
+addSignal -c ID_PURPLE6 -ls solid -lw 1 -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/idec/intf/i_mem_rd[4:0]
+addGroup "G4"
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/IDEXR[IFORMAT]
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/IDEXR[MUX1_SEL]
+addSignal -h 15 -UNSIGNED -HEX /tb_ch0re_pipeline/dut/IDEXR[MUX2_SEL]
+addGroup "G5"
+
+; getSignalForm Scope Hierarchy Status
+; active file of getSignalForm
+

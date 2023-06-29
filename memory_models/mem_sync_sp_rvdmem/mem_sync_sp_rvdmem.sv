@@ -27,14 +27,14 @@ function sim_control;
 	input[intf.DATA_WIDTH-1:0] data;
 	input[intf.ADDR_WIDTH-1:0] addr;
 	begin
-		if ( addr == 'h40 ) begin
+		if ( intf.i_addr == 'h40 ) begin
 			$write("%c",data[7:0]);
 			sim_control = 1;
 		end
-		else if ( addr == 'h50 ) begin
+		else if ( intf.i_addr == 'h50 ) begin
 			sim_control = 1;
-			$display("Simulation finished at time (%t) with write to halt address (0x%h = %d)!",$time,addr, data);
-			$display("main() return value = %d", data);
+			$display("Simulation finished at time (%0t) with write to halt address (h%0h = %0d)!",$time,addr, data);
+			$display("main() return value = %0d", data);
 			$finish;
 		end
 		else begin
@@ -54,7 +54,7 @@ function [intf.DATA_WIDTH-1:0] sim_cycle;
 	begin
 		sim_cycle = 0;
 		if ( rd ) begin
-			if ( addr == 'h60 ) begin
+			if ( intf.i_addr == 'h60 ) begin
 				$display("time %t cycle %d",$time,cycle);
 				sim_cycle = 1;
 			end
@@ -69,8 +69,6 @@ localparam ADDR_LOW  = $clog2(intf.DATA_BYTES);  // 3
 localparam ADDR_HIGH = ADDR_SIZE + ADDR_LOW - 1; // 14
 logic [ADDR_SIZE-1:0] addr;
 assign addr = intf.i_addr[ADDR_HIGH : ADDR_LOW];
-
-// 0x8000 1_000000000000_000
 
 
 logic [intf.DATA_WIDTH-1:0] mem [0 : intf.DEPTH-1];

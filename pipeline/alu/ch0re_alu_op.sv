@@ -14,11 +14,11 @@ class ch0re_alu_op_t;
 	int seed_file;
 
 	constraint small_nums {
-		src1 >= -100;
-		src1 <= 100;
+		src1 >= -500;
+		src1 <= 500;
 
-		src2 >= -100;
-		src2 <= 100;
+		src2 >= -500;
+		src2 <= 500;
 	};
 
 	local bit signed [63:0] res;
@@ -41,7 +41,6 @@ class ch0re_alu_op_t;
 
 			`DBP_PRINT_CURR();
 			$display("seed: %h", random_seed);
-
 		end
 		else begin
 
@@ -51,11 +50,9 @@ class ch0re_alu_op_t;
 
 			`DBP_PRINT_CURR();
 			$display("seed: %h", random_seed);
-
 		end
 
 		srandom(random_seed);
-
 	endfunction
 
 	function alu_op_e get_op();
@@ -121,9 +118,7 @@ class ch0re_alu_op_t;
 			ALU_SRA: this.res = this.src1 >>> this.src2[5:0];
 
 			default:;
-
 		endcase
-
 	endfunction
 
 	function void gen_rand();
@@ -132,7 +127,6 @@ class ch0re_alu_op_t;
 		else $fatal();
 
 		this.gen(this.op);
-
 	endfunction;
 
 	function void print();
@@ -145,7 +139,6 @@ class ch0re_alu_op_t;
 		// $display("flag_overflow = 1'b%1b", this.flag_overflow);
 		$display("flag_zero = 1'b%1b", this.flag_zero);
 		$display("flag_less   = 1'b%1b", this.flag_less);
-
 	endfunction
 
 endclass

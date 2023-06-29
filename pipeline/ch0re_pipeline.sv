@@ -113,14 +113,6 @@ module ch0re_pipeline #(
 	logic [10:0] EXHR;
 	logic [8:0] MEMHR;
 
-	`define EXHR_LSU_OP 0+:2
-	`define EXHR_IFMT   2+:3
-	`define EXHR_RD     5+:5
-	`define EXHR_WEN    10+:1
-
-	`define MEMHR_IFMT 0+:3
-	`define MEMHR_RD   3+:5
-	`define MEMHR_WEN  8+:1
 
 	/* STAGE-1: 'IFETCH' */
 
@@ -138,11 +130,11 @@ module ch0re_pipeline #(
 
 				IFIDR[`IFIDR_CURR_PC] <= PCR;
 
-				if ((opcode_e'(imem_intf.o_rdata[6:2]) == OPCODE_JAL) | (opcode_e'(imem_intf.o_rdata[6:2]) == OPCODE_JALR)) begin
-					PCR <= branch_target;
-				end
-				else if (branch_taken) begin
+				if (branch_taken) begin
 					PCR <= IDEXR[`IDEXR_BRANCH_TARGET];
+				end
+				else if ((opcode_e'(imem_intf.o_rdata[6:2]) == OPCODE_JAL) | (opcode_e'(imem_intf.o_rdata[6:2]) == OPCODE_JALR)) begin
+					PCR <= branch_target;
 				end
 				else begin
 					PCR <= PCR + 'h4;
@@ -169,6 +161,8 @@ module ch0re_pipeline #(
 		`else
 		// synthesizable memory
 		`endif
+
+		branch_taken = 1'b0;
 
 		unique case (IDEXR[`IDEXR_ALU_OP])
 
@@ -227,7 +221,7 @@ module ch0re_pipeline #(
 
 				/* handling bypass{WB->ID} and x0 */
 
-				if (idec_intf.o_rf_raddr1) begin
+				if (idec_intf.o_rf_raddr1 != 'h0) begin
 
 					if (idec_intf.o_rf_raddr1 == MEMWBR[`MEMWBR_RD] & (MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_S) &
 							(MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_B) & (MEMWBR[`MEMWBR_WEN])) begin
@@ -241,14 +235,16 @@ module ch0re_pipeline #(
 					IDEXR[`IDEXR_RS1] <= 'b0;
 				end
 
-				if (idec_intf.o_rf_raddr2) begin
+				/// TODO: remove != IFORMAT_S & != IFORMAT_B
+
+				if (idec_intf.o_rf_raddr2 != 'h0) begin
 
 					if (idec_intf.o_rf_raddr2 == MEMWBR[`MEMWBR_RD] & (MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_S) &
 							(MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_B) & (MEMWBR[`MEMWBR_WEN])) begin
 						IDEXR[`IDEXR_RS2] <= wb_data;
 					end
 					else begin
-						IDEXR[`IDEXR_RS2] <= rf_intf.o_rdata1;
+						IDEXR[`IDEXR_RS2] <= rf_intf.o_rdata2;
 					end
 				end
 				else begin
@@ -270,17 +266,18 @@ module ch0re_pipeline #(
 				IDEXR[`IDEXR_BRANCH_TARGET] <= branch_target;
 				IDEXR[`IDEXR_LSU_OP] <= idec_intf.o_lsu_op;
 				IDEXR[`IDEXR_WEN] <= idec_intf.o_wen;
+				IDEXR[`IDEXR_I64] <= idec_intf.o_i64;
 
-				EXHR[`EXHR_LSU_OP] <= idec_intf.o_lsu_op;
-				EXHR[`EXHR_IFMT] <= idec_intf.o_instr_format;
-				EXHR[`EXHR_WEN] <= idec_intf.o_wen;
-				EXHR[`EXHR_RD] <= idec_intf.o_rf_waddr;
+				// EXHR[`EXHR_LSU_OP] <= idec_intf.o_lsu_op;
+				// EXHR[`EXHR_IFMT] <= idec_intf.o_instr_format;
+				// EXHR[`EXHR_WEN] <= idec_intf.o_wen;
+				// EXHR[`EXHR_RD] <= idec_intf.o_rf_waddr;
 
 				/* history registers update */
 
-				MEMHR[`MEMHR_IFMT] <= EXHR[`EXHR_IFMT];
-				MEMHR[`MEMHR_WEN] <= EXHR[`EXHR_WEN];
-				MEMHR[`MEMHR_RD] <= EXHR[`EXHR_RD];
+				// MEMHR[`MEMHR_IFMT] <= EXHR[`EXHR_IFMT];
+				// MEMHR[`MEMHR_WEN] <= EXHR[`EXHR_WEN];
+				// MEMHR[`MEMHR_RD] <= EXHR[`EXHR_RD];
 			end
 			else begin
 				IDEXR <= IDEXR;
@@ -308,10 +305,11 @@ module ch0re_pipeline #(
 
 	assign idec_intf.i_ex_rd = IDEXR[`IDEXR_RD]; //EXHR[`EXHR_RD];
 	assign idec_intf.i_ex_wen = IDEXR[`IDEXR_WEN]; //EXHR[`EXHR_WEN];
-	assign idec_intf.i_ex_lsu_op = IDEXR[`IDEXR_LSU_OP]; //EXHR[`EXHR_LSU_OP];
-	assign idec_intf.i_ex_iformat = IDEXR[`IDEXR_IFORMAT]; //EXHR[`EXHR_IFMT];
+	assign idec_intf.i_ex_lsu_op = lsu_op_e'(IDEXR[`IDEXR_LSU_OP]); //EXHR[`EXHR_LSU_OP];
+	assign idec_intf.i_ex_iformat = iformat_e'(IDEXR[`IDEXR_IFORMAT]); //EXHR[`EXHR_IFMT];
 
 	assign alu_intf.i_op = alu_op_e'(IDEXR[`IDEXR_ALU_OP]);
+	assign alu_intf.i_i64 = IDEXR[`IDEXR_I64];
 
 	always_ff @(posedge clk) begin: stage_3_ex
 
@@ -332,14 +330,14 @@ module ch0re_pipeline #(
 				EXMEMR[`EXMEMR_DATA_TYPE] <= IDEXR[`IDEXR_DATA_TYPE];
 				EXMEMR[`EXMEMR_WEN] <= IDEXR[`IDEXR_WEN];
 
-				// In EX stage, IFORMAT_S MUX2_SEL is always IMM. What if 'rs2' has a dependency though?
-
 				if (IDEXR[`IDEXR_LSU_OP] == LSU_STORE) begin
 
 					unique case (IDEXR[`IDEXR_ALU_MUX2_SEL])
 
+						// ALU_MUX2_SEL_REG: EXMEMR[`EXMEMR_RS2] <= IDEXR[`IDEXR_RS2];
 						ALU_MUX2_SEL_FWD_WB: EXMEMR[`EXMEMR_RS2] <= wb_data;
 						ALU_MUX2_SEL_FWD_MEM: EXMEMR[`EXMEMR_RS2] <= EXMEMR[`EXMEMR_ALU_OUT];
+
 						default: EXMEMR[`EXMEMR_RS2] <= IDEXR[`IDEXR_RS2];
 					endcase
 				end
@@ -371,10 +369,21 @@ module ch0re_pipeline #(
 
 		endcase
 
+		/// TODO: rewrite it better using if-else to avoid duplicate code!
+
 		unique case (IDEXR[`IDEXR_ALU_MUX2_SEL])
 
-			ALU_MUX2_SEL_IMM:      alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
-			ALU_MUX2_SEL_REG:      alu_intf.i_s2 = IDEXR[`IDEXR_RS2];
+			ALU_MUX2_SEL_IMM: alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
+
+			ALU_MUX2_SEL_REG: begin
+
+				if (IDEXR[`IDEXR_LSU_OP] != LSU_STORE) begin
+					alu_intf.i_s2 = IDEXR[`IDEXR_RS2];
+				end
+				else begin
+					alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
+				end
+			end
 
 			ALU_MUX2_SEL_FWD_WB: begin
 
@@ -408,7 +417,7 @@ module ch0re_pipeline #(
 
 	assign idec_intf.i_mem_rd = EXMEMR[`EXMEMR_RD]; //MEMHR[`MEMHR_RD];
 	assign idec_intf.i_mem_wen = EXMEMR[`EXMEMR_WEN]; //MEMHR[`MEMHR_WEN];
-	assign idec_intf.i_mem_iformat = EXMEMR[`EXMEMR_IFORMAT]; //MEMHR[`MEMHR_IFMT];
+	assign idec_intf.i_mem_iformat = iformat_e'(EXMEMR[`EXMEMR_IFORMAT]); //MEMHR[`MEMHR_IFMT];
 
 	always_ff @(posedge clk) begin: stage_4_mem
 
@@ -417,7 +426,7 @@ module ch0re_pipeline #(
 		end
 		else begin
 
-			MEMWBR[`MEMWBR_OUT] <= EXMEMR[`EXMEMR_ALU_OUT];
+			MEMWBR[`MEMWBR_ALU_OUT] <= EXMEMR[`EXMEMR_ALU_OUT];
 			MEMWBR[`MEMWBR_LSU_OP] <= EXMEMR[`EXMEMR_LSU_OP];
 			MEMWBR[`MEMWBR_RD] <= EXMEMR[`EXMEMR_RD];
 			MEMWBR[`MEMWBR_WEN] <= new_wen;
@@ -463,21 +472,74 @@ module ch0re_pipeline #(
 	/* STAGE-5: 'WRITE-BACK' */
 
 	logic [63:0] read_data;
+	logic [2:0] byte_offset;
 
 	assign read_data = dmem_intf.o_rdata;
 
 	always_comb begin: stage_5_wb
 
+		byte_offset = MEMWBR[`MEMWBR_ALU_OUT - 61];  // extracting only the 3 LSbits
+
 		if (MEMWBR[`MEMWBR_LSU_OP] == LSU_LOAD) begin
 
 			unique case (MEMWBR[`MEMWBR_DATA_TYPE])
 
-				DTYPE_BYTE: wb_data = {{57{read_data[7]}}, read_data[6:0]};
-				DTYPE_HALF: wb_data = {{49{read_data[15]}}, read_data[14:0]};
-				DTYPE_WORD: wb_data = {{33{read_data[31]}}, read_data[30:0]};
+				DTYPE_BYTE: begin
+
+					unique case (byte_offset)
+
+						// Could have I used 'generate' construct?
+
+						3'b000: wb_data = {{57{read_data[7]}}, read_data[0+:7]};
+						3'b001: wb_data = {{57{read_data[15]}}, read_data[8+:7]};
+						3'b010: wb_data = {{57{read_data[23]}}, read_data[16+:7]};
+						3'b100: wb_data = {{57{read_data[31]}}, read_data[24+:7]};
+						3'b011: wb_data = {{57{read_data[39]}}, read_data[32+:7]};
+						3'b101: wb_data = {{57{read_data[47]}}, read_data[40+:7]};
+						3'b110: wb_data = {{57{read_data[55]}}, read_data[48+:7]};
+						3'b111: wb_data = {{57{read_data[63]}}, read_data[56+:7]};
+					endcase
+				end
+
+				DTYPE_HALF: begin
+
+					// unique casez (byte_offset)
+
+					// 	3'b00
+					// endcase
+					wb_data = {{49{read_data[15]}}, read_data[14:0]};
+				end
+
+				DTYPE_WORD: begin
+
+					unique casez (byte_offset)
+
+						3'b0??: wb_data = {{33{read_data[31]}}, read_data[30:0]};
+						3'b1??: wb_data = {{33{read_data[63]}}, read_data[62:32]};
+
+						default:;
+					endcase
+				end
+
 				DTYPE_DOUBLE: wb_data = read_data;
 
-				DTYPE_BYTEU: wb_data = {{56{1'b0}}, read_data[7:0]};
+				DTYPE_BYTEU: begin
+
+					unique case (byte_offset)
+
+						// Could have I used 'generate' construct?
+
+						3'b000: wb_data = {{56{1'b0}}, read_data[0+:8]};
+						3'b001: wb_data = {{56{1'b0}}, read_data[8+:8]};
+						3'b010: wb_data = {{56{1'b0}}, read_data[16+:8]};
+						3'b100: wb_data = {{56{1'b0}}, read_data[24+:8]};
+						3'b011: wb_data = {{56{1'b0}}, read_data[32+:8]};
+						3'b101: wb_data = {{56{1'b0}}, read_data[40+:8]};
+						3'b110: wb_data = {{56{1'b0}}, read_data[48+:8]};
+						3'b111: wb_data = {{56{1'b0}}, read_data[56+:8]};
+					endcase
+				end
+
 				DTYPE_HALFU: wb_data = {{48{1'b0}}, read_data[15:0]};
 				DTYPE_WORDU: wb_data = {{32{1'b0}}, read_data[31:0]};
 
@@ -485,18 +547,19 @@ module ch0re_pipeline #(
 					wb_data = {64{1'h1}};
 					assert(1'b0) else $fatal();
 				end
-
 			endcase
 
 		end
 		else begin
-			wb_data = MEMWBR[`MEMWBR_OUT];
+			wb_data = MEMWBR[`MEMWBR_ALU_OUT];
 		end
 
-		if (MEMWBR[`MEMWBR_RD])
+		if (MEMWBR[`MEMWBR_RD]) begin
 			rf_intf.i_wen = MEMWBR[`MEMWBR_WEN];
-		else
+		end
+		else begin
 			rf_intf.i_wen = 'b0;
+		end
 
 		rf_intf.i_waddr = MEMWBR[`MEMWBR_RD];
 		rf_intf.i_wdata = wb_data;
