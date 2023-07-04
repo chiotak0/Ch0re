@@ -47,8 +47,8 @@ interface ch0re_idecoder_intf(
 
 	/* to Pipeline Control */
 
-	logic o_store_rs2_wb_fwd;
 	logic o_pl_stall;
+	logic o_idis;
 
 endinterface: ch0re_idecoder_intf
 
@@ -71,7 +71,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 	assign opcode = opcode_e'(instr[6:2]);
 
 
-	always_ff @(posedge intf.clk) begin: dis_ninstr_after_jump
+	always_ff @(posedge intf.clk) begin: dis_next_instr_after_jump
 
 		if (!intf.rst_n) begin
 			DISNIR <= 1'b0;
@@ -98,6 +98,7 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 			intf.o_wen = 1'b0;
 			dis_ninstr = 1'b1;
 			intf.o_i64 = 1'b0;
+			intf.o_idis = 1'b0;
 		end
 		else begin
 
@@ -105,15 +106,17 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 			intf.o_lsu_op = LSU_NONE;
 			intf.o_data_type = DTYPE_DOUBLE;
 			intf.o_i64 = 1'b0;
+			intf.o_idis = 1'b0;
 
 			if (!DISNIR & !intf.i_br_taken) begin
 				intf.o_wen = 1'b1;
 			end
 			else begin
 				intf.o_wen = 1'b0;
+				intf.o_idis = 1'b1;
 			end
 
-			if ((opcode == OPCODE_JALR) | (opcode == OPCODE_JAL) | intf.i_br_taken) begin
+			if ((opcode == OPCODE_JAL) | intf.i_br_taken) begin
 				dis_ninstr = 1'b1;
 			end
 			else begin
@@ -438,90 +441,81 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 	end
 
 
-	always_comb begin: alu_muxes_control_signals
+	always_comb begin: alu_control_pipeline_stall
 
 		if (intf.o_illegal_instr) begin: illegal_instr
 			intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
 			intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
-			intf.o_store_rs2_wb_fwd = 1'b0;
 			intf.o_pl_stall = 1'b0;
 		end
 		else begin
 
 			intf.o_pl_stall = 1'b0;
-			intf.o_store_rs2_wb_fwd = 1'b0;
 
 			unique case (intf.o_instr_format)
 
-			IFORMAT_R,  // rs1, rs2
-			IFORMAT_S,  // rs1, rs2
-			IFORMAT_B,  // rs1, rs2
-			IFORMAT_I: begin  // rs1
+			IFORMAT_R,
+			IFORMAT_S,
+			IFORMAT_B,
+			IFORMAT_I: begin
 
-				if (opcode == OPCODE_JALR) begin  /// TODO: STALL if 'rs1' is needed
-					intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
-					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM_FOUR;
-				end
-				else begin
 
-					/* IFORMAT_R: rs1, rs2
-					 * IFORMAT_S: rs1, rs2 (*only rs1 truly needed for ALU op*)
-					 * IFORMAT_B: rs1, rs2
-					 * IFORAMT_I: rs1, Imm
-					 */
+				/* 'rs1' handling */
 
-					/* 'rs1' handling */
+				if ((intf.i_ex_rd == intf.o_rf_raddr1) & (intf.i_ex_rd != 'h0) & (intf.i_ex_wen)) begin
 
-					if ((intf.i_ex_rd == intf.o_rf_raddr1) & (intf.i_ex_rd != 'h0) & (intf.i_ex_wen)) begin
-
-						if (intf.i_ex_lsu_op == LSU_LOAD) begin
-							intf.o_pl_stall = 1'b1;
-							intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_WB;
-						end
-						else if ((intf.i_ex_iformat != IFORMAT_B) & (intf.i_ex_iformat != IFORMAT_S)) begin
-							intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_MEM;
-						end
-						else begin
-							intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
-						end
-					end
-					else if ((intf.i_mem_rd == intf.o_rf_raddr1) & (intf.i_mem_rd != 'h0) & (intf.i_mem_wen) &
-							(intf.i_mem_iformat != IFORMAT_B) & (intf.i_mem_iformat != IFORMAT_S)) begin
+					if (intf.i_ex_lsu_op == LSU_LOAD) begin
+						intf.o_pl_stall = 1'b1;
 						intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_WB;
 					end
-					else begin
+					else if (intf.i_ex_iformat != IFORMAT_S) begin
+						intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_MEM;
+					end
+					else if (opcode == OPCODE_JALR) begin
+						intf.o_alu_mux1_sel = ALU_MUX1_SEL_PC;
+					end
+					else begin /* STORE */
 						intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
 					end
+				end
+				else if ((intf.i_mem_rd == intf.o_rf_raddr1) & (intf.i_mem_rd != 'h0) & (intf.i_mem_wen) &
+						 (intf.i_mem_iformat != IFORMAT_S)) begin
+					intf.o_alu_mux1_sel = ALU_MUX1_SEL_FWD_WB;
+				end
+				else begin
+					intf.o_alu_mux1_sel = ALU_MUX1_SEL_REG;
+				end
 
-					/* 'rs2' handling */
+				/* 'rs2' handling */
 
-					if (intf.o_instr_format == IFORMAT_I) begin
-						intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
-					end
-					else if ((intf.i_ex_rd == intf.o_rf_raddr2) & (intf.i_ex_rd != 'h0) & (intf.i_ex_wen)) begin
+				if (opcode == OPCODE_JALR) begin
+					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM_FOUR;
+				end
+				else if (intf.o_instr_format == IFORMAT_I) begin
+					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+				end
+				else if ((intf.i_ex_rd == intf.o_rf_raddr2) & (intf.i_ex_rd != 'h0) & (intf.i_ex_wen)) begin
 
-						if ((intf.i_ex_lsu_op == LSU_LOAD) & (intf.o_instr_format != IFORMAT_S)) begin
-							intf.o_pl_stall = 1'b1;
-							intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_WB;
-						end
-						else if ((intf.i_ex_lsu_op == LSU_LOAD) & (intf.o_instr_format == IFORMAT_S)) begin
-							intf.o_store_rs2_wb_fwd = 1'b1;
-							intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
-						end
-						else if ((intf.i_ex_iformat != IFORMAT_B) & (intf.i_ex_iformat != IFORMAT_S)) begin
-							intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_MEM;
-						end
-						else begin
-							intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
-						end
-					end
-					else if ((intf.i_mem_rd == intf.o_rf_raddr2) & (intf.i_mem_rd != 'h0) & (intf.i_mem_wen) &
-							 (intf.i_mem_iformat != IFORMAT_B) & (intf.i_mem_iformat != IFORMAT_S)) begin
+					if (intf.i_ex_lsu_op == LSU_LOAD) begin
+						intf.o_pl_stall = 1'b1;
 						intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_WB;
 					end
-					else begin
-						intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
+					else if (intf.i_ex_iformat != IFORMAT_S) begin
+						intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_MEM;
 					end
+					else begin /* STORE */
+						intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+					end
+				end
+				else if ((intf.i_mem_rd == intf.o_rf_raddr2) & (intf.i_mem_rd != 'h0) & (intf.i_mem_wen) &
+						 (intf.i_mem_iformat != IFORMAT_S)) begin
+					intf.o_alu_mux2_sel = ALU_MUX2_SEL_FWD_WB;
+				end
+				else if (intf.o_instr_format == IFORMAT_S) begin
+					intf.o_alu_mux2_sel = ALU_MUX2_SEL_IMM;
+				end
+				else begin
+					intf.o_alu_mux2_sel = ALU_MUX2_SEL_REG;
 				end
 			end
 

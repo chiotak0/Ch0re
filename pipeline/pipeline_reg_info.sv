@@ -24,8 +24,10 @@
 `define IDEXR_WEN           340+:1
 `define IDEXR_IFORMAT       341+:3
 `define IDEXR_I64           344+:1
+`define IDEXR_IS_JALR       345+:1
+`define IDEXR_DISABLED      346+:1
 
-`define IDEXR_SIZE          344:0
+`define IDEXR_SIZE          346:0
 
 /* EX/MEM */
 
@@ -36,8 +38,9 @@
 `define EXMEMR_DATA_TYPE 135+:3
 `define EXMEMR_WEN       138+:1
 `define EXMEMR_IFORMAT   139+:3
+`define EXMEMR_DISABLED  142+:1
 
-`define EXMEMR_SIZE      141:0
+`define EXMEMR_SIZE      142:0
 
 /* MEM/WB */
 
@@ -47,8 +50,9 @@
 `define MEMWBR_WEN       71+:1
 `define MEMWBR_DATA_TYPE 72+:3
 `define MEMWBR_IFORMAT   75+:3
+`define MEMWBR_DISABLED  78+:1
 
-`define MEMWBR_SIZE      77:0
+`define MEMWBR_SIZE      78:0
 
 /* Dependency History */
 

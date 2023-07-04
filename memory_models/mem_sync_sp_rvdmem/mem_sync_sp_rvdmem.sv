@@ -84,6 +84,7 @@ always @(posedge intf.clk) begin
 		end
 
 	intf.o_rdata = mem[addr];
+
 	// override with cycle value when reading from the sim cycle address
 	if ( sim_cycle(intf.i_addr, (intf.i_wen==0)) ) begin
 		intf.o_rdata = cycle;

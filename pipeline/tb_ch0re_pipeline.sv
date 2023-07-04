@@ -7,7 +7,11 @@
 `define EXMEMR_ALU_OUT   0+:64
 `define EXMEMR_LSU_OP    133+:2
 
-// `define DEBUG
+
+// load x1, ...
+// load x2, ...
+// add x3, x1, x2 NOT WORKING
+
 
 module tb_ch0re_pipeline();
 
@@ -15,10 +19,10 @@ module tb_ch0re_pipeline();
     logic rst_n;
 
     ch0re_pipeline #(
-        // .IMEM_FILE("../code/example3/coremark.imem.dat"),
-        // .DMEM_FILE("../code/example3/coremark.dmem.dat"),
-        .IMEM_FILE("../code/compliance_tests/or.imem.dat"),
-        .DMEM_FILE("../code/compliance_tests/or.dmem.dat"),
+        // .IMEM_FILE("../code/example2/fib.imem.dat"),
+        // .DMEM_FILE("../code/example2/fib.dmem.dat"),
+        .IMEM_FILE("../code/compliance_tests/lw.imem.dat"),
+        .DMEM_FILE("../code/compliance_tests/lw.dmem.dat"),
         .IMEM_START('h100)
         // .IMEM_END('h160 - 'h1)
     ) dut (
@@ -42,11 +46,11 @@ module tb_ch0re_pipeline();
         #1;
         rst_n = 1'b1;
 
+        `ifdef DEBUG
+        run_print_pipeline(600);
+        `else
         for(;;) @(posedge clk);
-        // run_print_pipeline(200);
-
-        `DBP_PRINT_CURR();
-        $write({`DBP_SUCCESS, "\n"});
+        `endif
 
         $finish();
     end
@@ -131,6 +135,7 @@ module tb_ch0re_pipeline();
             $display("  - dut.IDEXR[`IDEXR_LSU_OP] = %0s", lop.name());
             $display("  - dut.IDEXR[`IDEXR_WEN] = %0d", dut.IDEXR[`IDEXR_WEN]);
             $display("  - dut.IDEXR[`IDEXR_IFORMAT] = %0s", ifmt.name());
+            $display("  - dut.IDEXR[`IDEXR_DISABLED] = %0d", dut.IDEXR[`IDEXR_DISABLED]);
             `endif
 
 
@@ -142,6 +147,7 @@ module tb_ch0re_pipeline();
             ifmt = iformat_e'(dut.EXMEMR[`EXMEMR_IFORMAT]);
 
             $display({`DBP_BOLD, `DBP_FGREEN, "STAGE-4:", `DBP_RST});
+            $display("  - dut.dmem.addr = %0h (%0d)", dut.dmem.addr, dut.dmem.addr);
             $display("  - dut.dmem_intf.i_addr = h%0h", dut.dmem_intf.i_addr);
             $display("  - dut.EXMEMR[`EXMEMR_ALU_OUT] = h%0h (%0d)", dut.EXMEMR[`EXMEMR_ALU_OUT], dut.EXMEMR[`EXMEMR_ALU_OUT]);
             $display("  - dut.EXMEMR[`EXMEMR_RS2] = %0d", dut.EXMEMR[`EXMEMR_RS2]);
@@ -160,6 +166,7 @@ module tb_ch0re_pipeline();
             dt = data_type_e'(dut.MEMWBR[`MEMWBR_DATA_TYPE]);
 
             $display({`DBP_BOLD, `DBP_FGREEN, "STAGE-5:", `DBP_RST});
+            $display("  - dut.dmem_intf.o_rdata = h%0h (%0d)", dut.dmem_intf.o_rdata, dut.dmem_intf.o_rdata);
             $display("  - dut.wb_data = h%0h (%0d)", dut.wb_data, dut.wb_data);
             $display("  - dut.MEMWBR[`MEMWBR_ALU_OUT] = h%0h (%0d)", dut.MEMWBR[`MEMWBR_ALU_OUT], dut.MEMWBR[`MEMWBR_ALU_OUT]);
             $display("  - dut.MEMWBR[`MEMWBR_LSU_OP] = %0s", lop.name());
@@ -174,5 +181,5 @@ module tb_ch0re_pipeline();
 
     endtask
 
-endmodule: tb_ch0re_pipeline
+endmodule
 

@@ -103,11 +103,6 @@ module ch0re_pipeline #(
 	logic DISIFR;
 	logic branch_taken;
 
-	/*  */
-
-	logic RS2FW1R;
-	logic RS2FW2R;
-
 	/* history registers (dependencies) to reduce wires between stages */
 
 	logic [10:0] EXHR;
@@ -130,17 +125,30 @@ module ch0re_pipeline #(
 
 				IFIDR[`IFIDR_CURR_PC] <= PCR;
 
-				if (branch_taken) begin
-					PCR <= IDEXR[`IDEXR_BRANCH_TARGET];
+				if ((!IDEXR[`IDEXR_DISABLED]) & branch_taken) begin
+
+					if (!IDEXR[`IDEXR_IS_JALR]) begin
+						PCR <= IDEXR[`IDEXR_BRANCH_TARGET];
+					end
+					else begin
+
+						unique case (IDEXR[`IDEXR_ALU_MUX1_SEL])
+
+							ALU_MUX1_SEL_FWD_MEM: PCR <= EXMEMR[`EXMEMR_ALU_OUT] + IDEXR[`IDEXR_IMM];
+							ALU_MUX1_SEL_FWD_WB:  PCR <= wb_data + IDEXR[`IDEXR_IMM];
+
+							default: PCR <= IDEXR[`IDEXR_RS1] + IDEXR[`IDEXR_IMM];
+						endcase
+					end
 				end
-				else if ((opcode_e'(imem_intf.o_rdata[6:2]) == OPCODE_JAL) | (opcode_e'(imem_intf.o_rdata[6:2]) == OPCODE_JALR)) begin
+				else if ((!idec_intf.o_idis) & (opcode_e'(imem_intf.o_rdata[6:2]) == OPCODE_JAL)) begin
 					PCR <= branch_target;
 				end
 				else begin
 					PCR <= PCR + 'h4;
 				end
 			end
-			else begin /* Stall */
+			else begin
 				PCR <= PCR;
 				IFIDR <= IFIDR;
 			end
@@ -164,41 +172,43 @@ module ch0re_pipeline #(
 
 		branch_taken = 1'b0;
 
-		unique case (IDEXR[`IDEXR_ALU_OP])
+		if (IDEXR[`IDEXR_DISABLED]) begin
+			branch_taken = 1'b0;
+		end
+		else begin
+			unique case (IDEXR[`IDEXR_ALU_OP])
 
-			ALU_EQ: begin
-				if (alu_intf.o_flag_zero) begin
-					branch_taken = 1'b1;
+				ALU_EQ: begin
+					if (alu_intf.o_flag_zero) begin
+						branch_taken = 1'b1;
+					end
 				end
-			end
 
-			ALU_NE: begin
-				if (!alu_intf.o_flag_zero) begin
-					branch_taken = 1'b1;
+				ALU_NE: begin
+					if (!alu_intf.o_flag_zero) begin
+						branch_taken = 1'b1;
+					end
 				end
-			end
 
-			ALU_LT, ALU_LTU: begin
-				if (alu_intf.o_flag_less) begin
-					branch_taken = 1'b1;
+				ALU_LT, ALU_LTU: begin
+					if (alu_intf.o_flag_less) begin
+						branch_taken = 1'b1;
+					end
 				end
-			end
 
-			ALU_GE, ALU_GEU: begin
-				if (!alu_intf.o_flag_less) begin
-					branch_taken = 1'b1;
+				ALU_GE, ALU_GEU: begin
+					if (!alu_intf.o_flag_less) begin
+						branch_taken = 1'b1;
+					end
 				end
-			end
 
-			default: branch_taken = 1'b0;
-
-		endcase
+				default: branch_taken = IDEXR[`IDEXR_IS_JALR];
+			endcase
+		end
 	end
 
 
 	/* STAGE-2: 'IDECODE' */
-
-	logic store_rs2_fwd_wb;
 
 	always_ff @(posedge clk) begin: stage_2_id
 
@@ -208,14 +218,12 @@ module ch0re_pipeline #(
 			STALLR <= 1'b0;
 			EXHR <= 'h0;
 			MEMHR <= 'h0;
-			RS2FW1R <= 'h0;
 		end
 		else begin
 
 			// idec_intf.o_illegal_instr (future: precise exceptions?)
 
 			STALLR <= idec_intf.o_pl_stall;
-			RS2FW1R <= idec_intf.o_store_rs2_wb_fwd;
 
 			if (!STALLR) begin
 
@@ -223,8 +231,8 @@ module ch0re_pipeline #(
 
 				if (idec_intf.o_rf_raddr1 != 'h0) begin
 
-					if (idec_intf.o_rf_raddr1 == MEMWBR[`MEMWBR_RD] & (MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_S) &
-							(MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_B) & (MEMWBR[`MEMWBR_WEN])) begin
+					if (idec_intf.o_rf_raddr1 == MEMWBR[`MEMWBR_RD] & (MEMWBR[`MEMWBR_WEN]) &
+						(MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_S)) begin
 						IDEXR[`IDEXR_RS1] <= wb_data;
 					end
 					else begin
@@ -235,12 +243,10 @@ module ch0re_pipeline #(
 					IDEXR[`IDEXR_RS1] <= 'b0;
 				end
 
-				/// TODO: remove != IFORMAT_S & != IFORMAT_B
-
 				if (idec_intf.o_rf_raddr2 != 'h0) begin
 
-					if (idec_intf.o_rf_raddr2 == MEMWBR[`MEMWBR_RD] & (MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_S) &
-							(MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_B) & (MEMWBR[`MEMWBR_WEN])) begin
+					if (idec_intf.o_rf_raddr2 == MEMWBR[`MEMWBR_RD] & (MEMWBR[`MEMWBR_WEN]) &
+						(MEMWBR[`MEMWBR_IFORMAT] != IFORMAT_S)) begin
 						IDEXR[`IDEXR_RS2] <= wb_data;
 					end
 					else begin
@@ -267,6 +273,14 @@ module ch0re_pipeline #(
 				IDEXR[`IDEXR_LSU_OP] <= idec_intf.o_lsu_op;
 				IDEXR[`IDEXR_WEN] <= idec_intf.o_wen;
 				IDEXR[`IDEXR_I64] <= idec_intf.o_i64;
+				IDEXR[`IDEXR_DISABLED] <= idec_intf.o_idis;
+
+				if (opcode_e'(idec_intf.i_instr[6:2]) == OPCODE_JALR) begin
+					IDEXR[`IDEXR_IS_JALR] <= 1'b1;
+				end
+				else begin
+					IDEXR[`IDEXR_IS_JALR] <= 1'b0;
+				end
 
 				// EXHR[`EXHR_LSU_OP] <= idec_intf.o_lsu_op;
 				// EXHR[`EXHR_IFMT] <= idec_intf.o_instr_format;
@@ -280,6 +294,7 @@ module ch0re_pipeline #(
 				// MEMHR[`MEMHR_RD] <= EXHR[`EXHR_RD];
 			end
 			else begin
+
 				IDEXR <= IDEXR;
 				STALLR <= 1'b0;
 				EXHR <= EXHR;
@@ -295,9 +310,8 @@ module ch0re_pipeline #(
 
 		rf_intf.i_raddr1 = idec_intf.o_rf_raddr1;
 		rf_intf.i_raddr2 = idec_intf.o_rf_raddr2;
-		store_rs2_fwd_wb = idec_intf.o_store_rs2_wb_fwd;
 
-		branch_target = IFIDR[`IFIDR_CURR_PC] + idec_intf.o_imm; /// TODO: add support for 'jalr'
+		branch_target = IFIDR[`IFIDR_CURR_PC] + idec_intf.o_imm;
 	end
 
 
@@ -315,11 +329,8 @@ module ch0re_pipeline #(
 
 		if (!rst_n) begin
 			EXMEMR <= 'b0;
-			RS2FW2R <= 'b0;
 		end
 		else begin
-
-			RS2FW2R <= RS2FW1R;
 
 			if (!STALLR) begin
 
@@ -329,12 +340,12 @@ module ch0re_pipeline #(
 				EXMEMR[`EXMEMR_LSU_OP] <= IDEXR[`IDEXR_LSU_OP];
 				EXMEMR[`EXMEMR_DATA_TYPE] <= IDEXR[`IDEXR_DATA_TYPE];
 				EXMEMR[`EXMEMR_WEN] <= IDEXR[`IDEXR_WEN];
+				EXMEMR[`EXMEMR_DISABLED] <= IDEXR[`IDEXR_DISABLED];
 
 				if (IDEXR[`IDEXR_LSU_OP] == LSU_STORE) begin
 
 					unique case (IDEXR[`IDEXR_ALU_MUX2_SEL])
 
-						// ALU_MUX2_SEL_REG: EXMEMR[`EXMEMR_RS2] <= IDEXR[`IDEXR_RS2];
 						ALU_MUX2_SEL_FWD_WB: EXMEMR[`EXMEMR_RS2] <= wb_data;
 						ALU_MUX2_SEL_FWD_MEM: EXMEMR[`EXMEMR_RS2] <= EXMEMR[`EXMEMR_ALU_OUT];
 
@@ -349,6 +360,7 @@ module ch0re_pipeline #(
 				EXMEMR <= EXMEMR;
 				EXMEMR[`EXMEMR_LSU_OP] <= LSU_NONE;
 				EXMEMR[`EXMEMR_WEN] <= 1'b0;
+				EXMEMR[`EXMEMR_DISABLED] <= 1'b1;
 			end
 		end
 	end
@@ -361,9 +373,27 @@ module ch0re_pipeline #(
 
 			ALU_MUX1_SEL_PC:       alu_intf.i_s1 = IDEXR[`IDEXR_PC];
 			ALU_MUX1_SEL_REG:      alu_intf.i_s1 = IDEXR[`IDEXR_RS1];
-			ALU_MUX1_SEL_FWD_WB:   alu_intf.i_s1 = wb_data;
-			ALU_MUX1_SEL_FWD_MEM:  alu_intf.i_s1 = EXMEMR[`EXMEMR_ALU_OUT];
 			ALU_MUX1_SEL_IMM_ZERO: alu_intf.i_s1 = 'h0;
+
+			ALU_MUX1_SEL_FWD_WB: begin
+
+				if (!IDEXR[`IDEXR_IS_JALR]) begin
+					alu_intf.i_s1 = wb_data;
+				end
+				else begin
+					alu_intf.i_s1 = IDEXR[`IDEXR_PC];
+				end
+			end
+
+			ALU_MUX1_SEL_FWD_MEM: begin
+
+				if (!IDEXR[`IDEXR_IS_JALR]) begin
+					alu_intf.i_s1 = EXMEMR[`EXMEMR_ALU_OUT];
+				end
+				else begin
+					alu_intf.i_s1 = IDEXR[`IDEXR_PC];
+				end
+			end
 
 			default:;
 
@@ -374,16 +404,7 @@ module ch0re_pipeline #(
 		unique case (IDEXR[`IDEXR_ALU_MUX2_SEL])
 
 			ALU_MUX2_SEL_IMM: alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
-
-			ALU_MUX2_SEL_REG: begin
-
-				if (IDEXR[`IDEXR_LSU_OP] != LSU_STORE) begin
-					alu_intf.i_s2 = IDEXR[`IDEXR_RS2];
-				end
-				else begin
-					alu_intf.i_s2 = IDEXR[`IDEXR_IMM];
-				end
-			end
+			ALU_MUX2_SEL_REG: alu_intf.i_s2 = IDEXR[`IDEXR_RS2];
 
 			ALU_MUX2_SEL_FWD_WB: begin
 
@@ -432,6 +453,7 @@ module ch0re_pipeline #(
 			MEMWBR[`MEMWBR_WEN] <= new_wen;
 			MEMWBR[`MEMWBR_DATA_TYPE] <= EXMEMR[`EXMEMR_DATA_TYPE];
 			MEMWBR[`MEMWBR_IFORMAT] <= EXMEMR[`EXMEMR_IFORMAT];
+			MEMWBR[`MEMWBR_DISABLED] <= EXMEMR[`EXMEMR_DISABLED];
 		end
 	end
 
@@ -451,10 +473,9 @@ module ch0re_pipeline #(
 				default:;
 
 			endcase
-
 		end
 		else begin
-			dmem_intf.i_wen = 8'b0;
+			dmem_intf.i_wen = 'h0;
 			new_wen = EXMEMR[`EXMEMR_WEN];
 		end
 
@@ -462,10 +483,7 @@ module ch0re_pipeline #(
 		dmem_intf.i_addr = EXMEMR[`EXMEMR_ALU_OUT];
 		`endif
 
-		if (!RS2FW2R)
-			dmem_intf.i_wdata = EXMEMR[`EXMEMR_RS2];
-		else
-			dmem_intf.i_wdata = wb_data;
+		dmem_intf.i_wdata = EXMEMR[`EXMEMR_RS2];
 	end
 
 
@@ -490,32 +508,71 @@ module ch0re_pipeline #(
 
 						// Could have I used 'generate' construct?
 
-						3'b000: wb_data = {{57{read_data[7]}}, read_data[0+:7]};
-						3'b001: wb_data = {{57{read_data[15]}}, read_data[8+:7]};
-						3'b010: wb_data = {{57{read_data[23]}}, read_data[16+:7]};
-						3'b100: wb_data = {{57{read_data[31]}}, read_data[24+:7]};
-						3'b011: wb_data = {{57{read_data[39]}}, read_data[32+:7]};
-						3'b101: wb_data = {{57{read_data[47]}}, read_data[40+:7]};
-						3'b110: wb_data = {{57{read_data[55]}}, read_data[48+:7]};
-						3'b111: wb_data = {{57{read_data[63]}}, read_data[56+:7]};
+						3'h0: wb_data = {{57{read_data[7]}}, read_data[0+:7]};
+						3'h1: wb_data = {{57{read_data[15]}}, read_data[8+:7]};
+						3'h2: wb_data = {{57{read_data[23]}}, read_data[16+:7]};
+						3'h3: wb_data = {{57{read_data[31]}}, read_data[24+:7]};
+						3'h4: wb_data = {{57{read_data[39]}}, read_data[32+:7]};
+						3'h5: wb_data = {{57{read_data[47]}}, read_data[40+:7]};
+						3'h6: wb_data = {{57{read_data[55]}}, read_data[48+:7]};
+						3'h7: wb_data = {{57{read_data[63]}}, read_data[56+:7]};
+					endcase
+				end
+
+				DTYPE_BYTEU: begin
+
+					unique case (byte_offset)
+
+						3'h0: wb_data = {{56{1'b0}}, read_data[0+:8]};
+						3'h1: wb_data = {{56{1'b0}}, read_data[8+:8]};
+						3'h2: wb_data = {{56{1'b0}}, read_data[16+:8]};
+						3'h3: wb_data = {{56{1'b0}}, read_data[24+:8]};
+						3'h4: wb_data = {{56{1'b0}}, read_data[32+:8]};
+						3'h5: wb_data = {{56{1'b0}}, read_data[40+:8]};
+						3'h6: wb_data = {{56{1'b0}}, read_data[48+:8]};
+						3'h7: wb_data = {{56{1'b0}}, read_data[56+:8]};
 					endcase
 				end
 
 				DTYPE_HALF: begin
 
-					// unique casez (byte_offset)
+					unique casez (byte_offset)
 
-					// 	3'b00
-					// endcase
-					wb_data = {{49{read_data[15]}}, read_data[14:0]};
+						3'b00?: wb_data = {{49{read_data[15]}}, read_data[0+:15]};
+						3'b01?: wb_data = {{49{read_data[31]}}, read_data[16+:15]};
+						3'b10?: wb_data = {{49{read_data[47]}}, read_data[32+:15]};
+						3'h11?: wb_data = {{49{read_data[63]}}, read_data[48+:15]};
+					endcase
+				end
+
+				DTYPE_HALFU: begin
+
+					unique casez (byte_offset)
+
+						3'b00?: wb_data = {{48{1'b0}}, read_data[0+:16]};
+						3'b01?: wb_data = {{48{1'b0}}, read_data[16+:16]};
+						3'b10?: wb_data = {{48{1'b0}}, read_data[32+:16]};
+						3'h11?: wb_data = {{48{1'b0}}, read_data[48+:16]};
+					endcase
 				end
 
 				DTYPE_WORD: begin
 
 					unique casez (byte_offset)
 
-						3'b0??: wb_data = {{33{read_data[31]}}, read_data[30:0]};
-						3'b1??: wb_data = {{33{read_data[63]}}, read_data[62:32]};
+						3'b0??: wb_data = {{33{read_data[31]}}, read_data[0+:31]};
+						3'b1??: wb_data = {{33{read_data[63]}}, read_data[32+:31]};
+
+						default:;
+					endcase
+				end
+
+				DTYPE_WORDU: begin
+
+					unique casez (byte_offset)
+
+						3'b0??: wb_data = {{32{1'b0}}, read_data[0+:32]};
+						3'b1??: wb_data = {{32{1'b0}}, read_data[32+:32]};
 
 						default:;
 					endcase
@@ -539,9 +596,6 @@ module ch0re_pipeline #(
 						3'b111: wb_data = {{56{1'b0}}, read_data[56+:8]};
 					endcase
 				end
-
-				DTYPE_HALFU: wb_data = {{48{1'b0}}, read_data[15:0]};
-				DTYPE_WORDU: wb_data = {{32{1'b0}}, read_data[31:0]};
 
 				default: begin
 					wb_data = {64{1'h1}};

@@ -10,16 +10,18 @@ interface ch0re_alu_intf();
 
 	logic o_flag_zero;
 	logic o_flag_less;
+	logic o_br_taken;
 
 	logic [63:0] o_res;
 
-endinterface: ch0re_alu_intf
+endinterface
 
 module ch0re_alu(ch0re_alu_intf intf);
 
 
 	/* ADDER */
 
+	logic [63:0] new_s1;
 	logic [63:0] new_s2;
 	logic [63:0] adder_result;
 
@@ -50,6 +52,8 @@ module ch0re_alu(ch0re_alu_intf intf);
 
 	always_comb begin: results
 
+		intf.o_br_taken = 1'b0;
+
 		unique case (intf.i_op)
 
 			ALU_GEU, ALU_SLTU, ALU_LTU: intf.o_flag_less = intf.i_s1 < intf.i_s2;
@@ -58,7 +62,7 @@ module ch0re_alu(ch0re_alu_intf intf);
 
 		unique case (intf.i_op)
 
-			ALU_SLT, ALU_SLTU: tmp_res = intf.o_flag_less;
+			ALU_SLT, ALU_SLTU: tmp_res = (intf.o_flag_less) ? 1'b1 : 1'b0;
 
 			ALU_EQ,  ALU_NE,
 			ALU_LT,  ALU_GE,
@@ -71,7 +75,7 @@ module ch0re_alu(ch0re_alu_intf intf);
 
 			ALU_SLL: tmp_res = intf.i_s1 << intf.i_s2[5:0];
 			ALU_SRL: tmp_res = intf.i_s1 >> intf.i_s2[5:0];
-			ALU_SRA: tmp_res = signed'(intf.i_s1) >>> intf.i_s2[5:0];  // part-select is unsigned........
+			ALU_SRA: tmp_res = $signed(intf.i_s1) >>> intf.i_s2[5:0];
 
 			default:;
 		endcase
@@ -85,5 +89,5 @@ module ch0re_alu(ch0re_alu_intf intf);
 
 	end
 
-endmodule: ch0re_alu
+endmodule
 

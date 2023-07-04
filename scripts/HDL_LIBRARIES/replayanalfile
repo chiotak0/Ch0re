@@ -1,0 +1,6 @@
+set search_path [list . /eda/synopsys/2022-23/RHELx86/FS-COMPILER_2022.12/dw/syn_ver /eda/synopsys/2022-23/RHELx86/FS-COMPILER_2022.12/dw/sim_ver /eda/synopsys/2022-23/RHELx86/FS-COMPILER_2022.12/libraries/syn ] 
+analyze -format sverilog  "/home/orchiot/Ch0re/scripts/../pipeline/pipeline_reg_info.sv /home/orchiot/Ch0re/scripts/../pipeline/ch0re_pipeline.sv /home/orchiot/Ch0re/scripts/../pipeline/tb_ch0re_pipeline.sv" 
+C/home/orchiot/Ch0re/scripts
+/home/orchiot/Ch0re/pipeline/pipeline_reg_info.sv
+/home/orchiot/Ch0re/pipeline/ch0re_pipeline.sv
+elaborate ch0re_pipeline
