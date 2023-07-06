@@ -53,7 +53,7 @@ simfiles: $(BINARY)
 	$(OBJC) -O binary -j .text --gap-fill 0 --pad-to $(IMEM_END) $< $<.text.bin
 	$(OBJC) -O binary -j .rodata -j .data -j .bss --pad-to $(DMEM_END) --gap-fill 0x0 $< $<.data.bin
 	$(OD) -An -t x4 -w4 -v $<.text.bin > $<.imem.dat
-	$(OD) -An -t x4 -w4 -v $<.data.bin > $<.dmem.dat
+	$(OD) -An -t x8 -w8 -v $<.data.bin > $<.dmem.dat
 
 clean:
 	\rm -f $(BINARY) $(BINARY).objd $(BINARY).*.bin $(BINARY).*.dat

@@ -1,44 +1,68 @@
 /*  Pipeline Spec:
  *  5-stage     [y]
  *  RV64I       [y]
- *  forwarding  [n]
+ *  forwarding  [y]
  *  exceptions  [n]
  */
 
-/* Exceptions:
+/* Exceptions: ?
  * instruction-address-misaligned (IALIGH=32) (if PC[1:0] != 0 ?)
  * instruction-illegal
  */
 
-`include "pipeline/pipeline_reg_info.sv"
+`include "pipeline_reg_info.sv"
 
+// `define SIMULATION
 
-`define SIMULATION
 
 module ch0re_pipeline #(
-	parameter IMEM_DEPTH = 2048,
-	parameter IMEM_ADDR_WIDTH = $clog2(IMEM_DEPTH),
 	parameter IMEM_FILE = "codemem.dat",
-	parameter IMEM_START = 0,
-	parameter IMEM_END = IMEM_DEPTH - 1,
-	parameter DMEM_DEPTH = 2048,
-	parameter DMEM_ADDR_WIDTH = $clog2(DMEM_DEPTH),
-	parameter DMEM_FILE = "codemem.dat"
+	parameter DMEM_FILE = "codemem.dat",
+	parameter IMEM_START = 0
 ) (
 	input logic clk,
 	input logic rst_n
 );
-
 	localparam DMEM_DATA_WIDTH = 64;
 	localparam IMEM_DATA_WIDTH = 32;
+	localparam DMEM_DATA_BYTES = DMEM_DATA_WIDTH / 8;
+	localparam IMEM_DATA_BYTES = IMEM_DATA_WIDTH / 8;
+
+	`ifdef SIMULATION
+
+	localparam DMEM_SIZE = (1 << 14);
+	localparam IMEM_SIZE = (1 << 14);
+
+	`else
+
+	localparam DMEM_SIZE = (1 << 13);
+	localparam IMEM_SIZE = (1 << 13);
+
+	`endif
+
+	localparam DMEM_DEPTH = DMEM_SIZE / DMEM_DATA_BYTES;
+	localparam IMEM_DEPTH = IMEM_SIZE / IMEM_DATA_BYTES;
+
+	localparam IMEM_ADDR_WIDTH = $clog2(IMEM_DEPTH);
+	localparam DMEM_ADDR_WIDTH = $clog2(DMEM_DEPTH);
+
+	// logic dmem_addr;
+	// logic dmem_wdata;
+	// logic dmem_wen;
+	// logic dmem_rdata;
+
 
 	/* Pipeline Registers */
+
+	/* FETCH */
 
 	logic [`PCR_SIZE] PCR;
 	logic [`IFIDR_SIZE] IFIDR;
 
+	`ifdef SIMULATION
+
 	mem_sync_sp_intf #(
-		.DEPTH(4096),
+		.DEPTH(IMEM_DEPTH),
 		.DATA_WIDTH(IMEM_DATA_WIDTH),
 		.INIT_FILE(IMEM_FILE)
 	) imem_intf (
@@ -47,6 +71,21 @@ module ch0re_pipeline #(
 
 	mem_sync_sp imem(imem_intf);
 
+	`else
+
+	mem_sync_sp_syn_intf #(
+		.DEPTH(IMEM_DEPTH),
+		.DATA_WIDTH(IMEM_DATA_WIDTH)
+	) imem_intf (
+		.clk(clk)
+	);
+
+	mem_sync_sp_syn imem(imem_intf);
+
+	`endif
+
+
+	/* DECODE */
 
 	logic [`IDEXR_SIZE] IDEXR;
 
@@ -66,16 +105,22 @@ module ch0re_pipeline #(
 	ch0re_idecoder idec(idec_intf);
 
 
+	/* EXECUTE */
+
 	logic [`EXMEMR_SIZE] EXMEMR;
 
 	ch0re_alu_intf alu_intf();
 	ch0re_alu alu(alu_intf);
 
 
+	/* MEMORY */
+
 	logic [`MEMWBR_SIZE] MEMWBR;
 
+	`ifdef SIMULATION
+
 	mem_sync_sp_rvdmem_intf #(
-		.DEPTH(4096),
+		.DEPTH(DMEM_DEPTH),
 		.DATA_WIDTH(DMEM_DATA_WIDTH),
 		.INIT_FILE(DMEM_FILE)
 	) dmem_intf (
@@ -84,6 +129,21 @@ module ch0re_pipeline #(
 
 	mem_sync_sp_rvdmem dmem(dmem_intf);
 
+	`else 
+
+	mem_sync_sp_syn_intf #(
+		.DEPTH(DMEM_DEPTH),
+		.DATA_WIDTH(DMEM_DATA_WIDTH)
+	) dmem_intf (
+		.clk(clk)
+	);
+
+	mem_sync_sp_syn dmem(dmem_intf);
+
+	`endif
+
+
+	/* WRITE BACK */
 
 	logic [63:0] wb_data;
 
@@ -155,20 +215,25 @@ module ch0re_pipeline #(
 		end
 	end
 
-	always_comb begin
-
-		`ifdef SIMULATION
+	always_comb begin: stage_1_if_comb
 
 		if (!STALLR) begin
+
+			`ifdef SIMULATION
 			imem_intf.i_addr = PCR[0 +: IMEM_ADDR_WIDTH] >> 2;
+			`else
+			imem_intf.i_addr = PCR[0+: IMEM_ADDR_WIDTH];
+			`endif
 		end
 		else begin
+
+			`ifdef SIMULATION
 			imem_intf.i_addr = (PCR[0 +: IMEM_ADDR_WIDTH] >> 2) - 1;
+			`else
+			imem_intf.i_addr = PCR[0+: IMEM_ADDR_WIDTH] - 'h4;
+			`endif
 		end
 
-		`else
-		// synthesizable memory
-		`endif
 
 		branch_taken = 1'b0;
 
@@ -213,15 +278,13 @@ module ch0re_pipeline #(
 	always_ff @(posedge clk) begin: stage_2_id
 
 		if (!rst_n) begin
+
 			IDEXR <= 'h0;
 			IDEXR[`IDEXR_ALU_OP] <= ALU_ADD;
 			STALLR <= 1'b0;
 			EXHR <= 'h0;
-			MEMHR <= 'h0;
 		end
 		else begin
-
-			// idec_intf.o_illegal_instr (future: precise exceptions?)
 
 			STALLR <= idec_intf.o_pl_stall;
 
@@ -303,7 +366,7 @@ module ch0re_pipeline #(
 		end
 	end
 
-	always_comb begin
+	always_comb begin: stage_2_id_comb
 
 		idec_intf.i_instr = imem_intf.o_rdata;
 		idec_intf.i_br_taken = branch_taken;
@@ -357,6 +420,7 @@ module ch0re_pipeline #(
 				end
 			end
 			else begin
+
 				EXMEMR <= EXMEMR;
 				EXMEMR[`EXMEMR_LSU_OP] <= LSU_NONE;
 				EXMEMR[`EXMEMR_WEN] <= 1'b0;
@@ -365,7 +429,7 @@ module ch0re_pipeline #(
 		end
 	end
 
-	always_comb begin
+	always_comb begin: stage_3_ex_comb
 
 		/* ALU's source-operands-selection muxes */
 
@@ -457,7 +521,7 @@ module ch0re_pipeline #(
 		end
 	end
 
-	always_comb begin
+	always_comb begin: stage_4_mem_comb
 
 		if ((EXMEMR[`EXMEMR_LSU_OP] == LSU_STORE) & EXMEMR[`EXMEMR_WEN]) begin
 
@@ -479,10 +543,7 @@ module ch0re_pipeline #(
 			new_wen = EXMEMR[`EXMEMR_WEN];
 		end
 
-		`ifdef SIMULATION
 		dmem_intf.i_addr = EXMEMR[`EXMEMR_ALU_OUT];
-		`endif
-
 		dmem_intf.i_wdata = EXMEMR[`EXMEMR_RS2];
 	end
 
@@ -494,7 +555,7 @@ module ch0re_pipeline #(
 
 	assign read_data = dmem_intf.o_rdata;
 
-	always_comb begin: stage_5_wb
+	always_comb begin: stage_5_wb_comb
 
 		byte_offset = MEMWBR[`MEMWBR_ALU_OUT - 61];  // extracting only the 3 LSbits
 
@@ -541,7 +602,7 @@ module ch0re_pipeline #(
 						3'b00?: wb_data = {{49{read_data[15]}}, read_data[0+:15]};
 						3'b01?: wb_data = {{49{read_data[31]}}, read_data[16+:15]};
 						3'b10?: wb_data = {{49{read_data[47]}}, read_data[32+:15]};
-						3'h11?: wb_data = {{49{read_data[63]}}, read_data[48+:15]};
+						3'b11?: wb_data = {{49{read_data[63]}}, read_data[48+:15]};
 					endcase
 				end
 
@@ -552,7 +613,7 @@ module ch0re_pipeline #(
 						3'b00?: wb_data = {{48{1'b0}}, read_data[0+:16]};
 						3'b01?: wb_data = {{48{1'b0}}, read_data[16+:16]};
 						3'b10?: wb_data = {{48{1'b0}}, read_data[32+:16]};
-						3'h11?: wb_data = {{48{1'b0}}, read_data[48+:16]};
+						3'b11?: wb_data = {{48{1'b0}}, read_data[48+:16]};
 					endcase
 				end
 

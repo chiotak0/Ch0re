@@ -16,6 +16,11 @@ interface mem_sync_sp_rvdmem_intf #(
 	logic [DATA_BYTES-1:0] i_wen;
 	logic [DATA_WIDTH-1:0] o_rdata;
 
+	modport def(
+		input clk, i_addr, i_wdata, i_wen,
+		output o_rdata
+	);
+
 endinterface : mem_sync_sp_rvdmem_intf
 
 

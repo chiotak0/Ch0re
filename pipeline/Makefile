@@ -5,15 +5,25 @@ SHELL:=/bin/bash
 
 CFLAGS=-debug_access+r -sverilog -kdb -notice -l comp.log
 
+DEBUG?=
+
 ifeq ($(DEBUG), 1)
 	CFLAGS+= +define+DEBUG
+endif
+
+SIM?=1
+
+ifeq ($(SIM), 1)
+	CFLAGS+= +define+SIMULATION
 endif
 
 
 DUT=ch0re_pipeline.sv
 TESTBENCH=tb_$(DUT)
 
-PACKAGES=../instruction/ch0re_instruction.sv
+PACKAGES=../debug_prints.sv\
+	../ch0re_types.sv\
+	../instruction/ch0re_instruction.sv
 
 FILELIST=filelist.f
 
@@ -35,7 +45,7 @@ simv: $(TESTBENCH) $(PACKAGES) $(DEPLIST)
 	fi
 	@printf "\033[33mmaking simulation...\033[0m\n"
 #
-	@vcs -f $(FILELIST) $(CFLAGS) $(PACKAGES) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
+	@vcs $(CFLAGS) $(PACKAGES) $(TESTBENCH) $(DEPLIST) > /dev/null 2>&1
 #	
 	@if [[ $$? -eq 0 ]]; then\
 		printf "\033[1;32mSUCCESS\033[0m\n";\

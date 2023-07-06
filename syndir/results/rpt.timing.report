@@ -1,0 +1,143 @@
+ 
+****************************************
+Report : timing
+        -path full
+        -delay max
+        -max_paths 1
+Design : ch0re_pipeline
+Version: U-2022.12
+Date   : Thu Jul  6 18:16:12 2023
+****************************************
+
+ # A fanout number of 1000 was used for high fanout net computations.
+
+Operating Conditions: tt0p8v25c   Library: saed14rvt_tt0p8v25c
+Wire Load Model Mode: top
+
+  Startpoint: STALLR_reg (rising edge-triggered flip-flop clocked by clk)
+  Endpoint: PCR_reg[63]
+            (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type: max
+
+  Des/Clust/Port     Wire Load Model       Library
+  ------------------------------------------------
+  ch0re_pipeline     540000                saed14rvt_tt0p8v25c
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock clk (rise edge)                                   0.00       0.00
+  clock network delay (ideal)                             0.00       0.00
+  STALLR_reg/CK (SAEDRVT14_FDP_V2_1)                      0.00 #     0.00 r
+  STALLR_reg/QN (SAEDRVT14_FDP_V2_1)                      0.02       0.02 r
+  sub_233_aco/U2_2/CO (SAEDRVT14_ADDF_V2_0P5)             0.24       0.25 r
+  sub_233_aco/U2_3/CO (SAEDRVT14_ADDF_V2_0P5)             0.13       0.38 r
+  sub_233_aco/U2_4/CO (SAEDRVT14_ADDF_V2_0P5)             0.13       0.51 r
+  sub_233_aco/U2_5/CO (SAEDRVT14_ADDF_V2_0P5)             0.13       0.64 r
+  sub_233_aco/U2_6/CO (SAEDRVT14_ADDF_V2_0P5)             0.13       0.78 r
+  sub_233_aco/U2_7/CO (SAEDRVT14_ADDF_V2_0P5)             0.13       0.91 r
+  sub_233_aco/U2_8/CO (SAEDRVT14_ADDF_V2_0P5)             0.13       1.04 r
+  sub_233_aco/U2_9/CO (SAEDRVT14_ADDF_V2_0P5)             0.13       1.17 r
+  sub_233_aco/U2_10/S (SAEDRVT14_ADDF_V2_0P5)             0.14       1.30 f
+  imem/intf.i_addr[10] (mem_sync_sp_syn_I_intf_mem_sync_sp_syn_intf__DEPTH_2048_DATA_WIDTH_32)
+                                                          0.00       1.30 f
+  imem/U89/X (SAEDRVT14_ND2_CDC_1)                        0.13       1.43 r
+  imem/U71/X (SAEDRVT14_AOINV_IW_0P5)                     0.13       1.56 f
+  imem/U82/X (SAEDRVT14_BUF_U_0P5)                        0.15       1.71 f
+  imem/U12/X (SAEDRVT14_AO22_1)                           0.20       1.91 f
+  imem/U92/X (SAEDRVT14_AO221_0P5)                        0.10       2.01 f
+  imem/intf.o_rdata[12] (mem_sync_sp_syn_I_intf_mem_sync_sp_syn_intf__DEPTH_2048_DATA_WIDTH_32)
+                                                          0.00       2.01 f
+  idec/intf.i_instr[12] (ch0re_idecoder_I_intf_ch0re_idecoder_intf__)
+                                                          0.00       2.01 f
+  idec/U342/X (SAEDRVT14_INV_0P5)                         0.10       2.11 r
+  idec/U98/X (SAEDRVT14_NR2_MM_0P5)                       0.14       2.25 f
+  idec/U313/X (SAEDRVT14_ND2_CDC_0P5)                     0.13       2.38 r
+  idec/U291/X (SAEDRVT14_INV_0P5)                         0.07       2.45 f
+  idec/U289/X (SAEDRVT14_OR3_0P5)                         0.12       2.57 f
+  idec/U288/X (SAEDRVT14_NR2_1)                           0.08       2.65 r
+  idec/U210/X (SAEDRVT14_AN3_0P5)                         0.12       2.77 r
+  idec/U209/X (SAEDRVT14_OAI21_0P5)                       0.13       2.90 f
+  idec/U205/X (SAEDRVT14_ND2_CDC_0P5)                     0.14       3.04 r
+  idec/U252/X (SAEDRVT14_OAI22_0P5)                       0.07       3.11 f
+  idec/intf.o_imm[6] (ch0re_idecoder_I_intf_ch0re_idecoder_intf__)
+                                                          0.00       3.11 f
+  add_377/B[6] (ch0re_pipeline_DW01_add_0)                0.00       3.11 f
+  add_377/U1_6/CO (SAEDRVT14_ADDF_V2_0P5)                 0.22       3.33 f
+  add_377/U1_7/CO (SAEDRVT14_ADDF_V2_0P5)                 0.11       3.44 f
+  add_377/U1_8/CO (SAEDRVT14_ADDF_V2_0P5)                 0.11       3.55 f
+  add_377/U1_9/CO (SAEDRVT14_ADDF_V2_0P5)                 0.11       3.67 f
+  add_377/U1_10/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       3.78 f
+  add_377/U1_11/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       3.89 f
+  add_377/U1_12/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       4.00 f
+  add_377/U1_13/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       4.11 f
+  add_377/U1_14/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       4.22 f
+  add_377/U1_15/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       4.33 f
+  add_377/U1_16/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       4.45 f
+  add_377/U1_17/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       4.56 f
+  add_377/U1_18/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       4.67 f
+  add_377/U1_19/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       4.78 f
+  add_377/U1_20/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       4.89 f
+  add_377/U1_21/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       5.00 f
+  add_377/U1_22/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       5.12 f
+  add_377/U1_23/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       5.23 f
+  add_377/U1_24/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       5.34 f
+  add_377/U1_25/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       5.45 f
+  add_377/U1_26/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       5.56 f
+  add_377/U1_27/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       5.67 f
+  add_377/U1_28/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       5.79 f
+  add_377/U1_29/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       5.90 f
+  add_377/U1_30/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       6.01 f
+  add_377/U1_31/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       6.12 f
+  add_377/U1_32/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       6.23 f
+  add_377/U1_33/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       6.34 f
+  add_377/U1_34/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       6.46 f
+  add_377/U1_35/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       6.57 f
+  add_377/U1_36/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       6.68 f
+  add_377/U1_37/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       6.79 f
+  add_377/U1_38/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       6.90 f
+  add_377/U1_39/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       7.02 f
+  add_377/U1_40/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       7.13 f
+  add_377/U1_41/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       7.24 f
+  add_377/U1_42/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       7.35 f
+  add_377/U1_43/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       7.46 f
+  add_377/U1_44/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       7.58 f
+  add_377/U1_45/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       7.69 f
+  add_377/U1_46/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       7.80 f
+  add_377/U1_47/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       7.91 f
+  add_377/U1_48/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       8.02 f
+  add_377/U1_49/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       8.14 f
+  add_377/U1_50/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       8.25 f
+  add_377/U1_51/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       8.36 f
+  add_377/U1_52/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       8.47 f
+  add_377/U1_53/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       8.58 f
+  add_377/U1_54/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       8.69 f
+  add_377/U1_55/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       8.81 f
+  add_377/U1_56/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       8.92 f
+  add_377/U1_57/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       9.03 f
+  add_377/U1_58/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       9.14 f
+  add_377/U1_59/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       9.25 f
+  add_377/U1_60/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       9.37 f
+  add_377/U1_61/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       9.48 f
+  add_377/U1_62/CO (SAEDRVT14_ADDF_V2_0P5)                0.11       9.59 f
+  add_377/U1_63/X (SAEDRVT14_EO3_1)                       0.09       9.68 r
+  add_377/SUM[63] (ch0re_pipeline_DW01_add_0)             0.00       9.68 r
+  U2701/X (SAEDRVT14_INV_S_0P5)                           0.06       9.74 f
+  U2758/X (SAEDRVT14_AO2BB2_1)                            0.08       9.82 r
+  U2777/X (SAEDRVT14_ND3B_0P75)                           0.10       9.92 r
+  PCR_reg[63]/D (SAEDRVT14_FDP_V2LP_1)                    0.06       9.99 r
+  data arrival time                                                  9.99
+
+  clock clk (rise edge)                                  10.00      10.00
+  clock network delay (ideal)                             0.00      10.00
+  PCR_reg[63]/CK (SAEDRVT14_FDP_V2LP_1)                   0.00      10.00 r
+  library setup time                                     -0.01       9.99
+  data required time                                                 9.99
+  --------------------------------------------------------------------------
+  data required time                                                 9.99
+  data arrival time                                                 -9.99
+  --------------------------------------------------------------------------
+  slack (MET)                                                        0.00
+
+
+1

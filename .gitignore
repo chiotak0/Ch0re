@@ -13,3 +13,7 @@ riscv-opcodes/
 *random_bytes.bin
 *.rc
 out
+syndir/*
+!syndir/results
+!syndir/scripts
+

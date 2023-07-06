@@ -1,5 +1,5 @@
-`include "ch0re_types.sv"
-`include "debug_prints.sv"
+// `include "ch0re_types.sv"
+// `include "debug_prints.sv"
 
 `define TOTAL_OPGEN 50
 

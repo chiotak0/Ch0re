@@ -1,4 +1,4 @@
-`include "ch0re_types.sv"
+// `include "ch0re_types.sv"
 
 interface ch0re_alu_intf();
 
@@ -10,9 +10,18 @@ interface ch0re_alu_intf();
 
 	logic o_flag_zero;
 	logic o_flag_less;
-	logic o_br_taken;
 
 	logic [63:0] o_res;
+
+	/* modport slave(
+		input i_op, i_i64, i_s1, i_s2,
+		output o_flag_less, o_flag_zero, o_res
+	);
+
+	modport master(
+		output i_op, i_i64, i_s1, i_s2,
+		input o_flag_less, o_flag_zero, o_res
+	); */
 
 endinterface
 
@@ -21,7 +30,6 @@ module ch0re_alu(ch0re_alu_intf intf);
 
 	/* ADDER */
 
-	logic [63:0] new_s1;
 	logic [63:0] new_s2;
 	logic [63:0] adder_result;
 
@@ -41,7 +49,6 @@ module ch0re_alu(ch0re_alu_intf intf);
 
 			default: new_s2 = intf.i_s2;
 		endcase
-
 	end
 
 
@@ -51,8 +58,6 @@ module ch0re_alu(ch0re_alu_intf intf);
 	assign intf.o_flag_zero = (adder_result == 'h0) ? 1'b1 : 1'b0;
 
 	always_comb begin: results
-
-		intf.o_br_taken = 1'b0;
 
 		unique case (intf.i_op)
 
@@ -86,7 +91,6 @@ module ch0re_alu(ch0re_alu_intf intf);
 		else begin
 			intf.o_res = {{33{tmp_res[31]}}, tmp_res[30:0]};
 		end
-
 	end
 
 endmodule

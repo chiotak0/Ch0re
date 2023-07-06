@@ -1,0 +1,75 @@
+Loading db file '/eda/tech-libs/SAED14/EDK/lib/stdcell_rvt/db_nldm/saed14rvt_tt0p8v25c.db'
+Loading db file '/eda/tech-libs/SAED14/EDK/lib/sram/logic_synth/single/saed14sram_tt0p8v25c.db'
+Information: Propagating switching activity (low effort zero delay simulation). (PWR-6)
+Warning: Design has unannotated primary inputs. (PWR-414)
+Warning: Design has unannotated sequential cell outputs. (PWR-415)
+Warning: Design has unannotated black box outputs. (PWR-428)
+ 
+****************************************
+Report : power
+        -hier
+        -analysis_effort low
+Design : ch0re_pipeline
+Version: U-2022.12
+Date   : Thu Jul  6 18:16:17 2023
+****************************************
+
+
+Library(s) Used:
+
+    saed14rvt_tt0p8v25c (File: /eda/tech-libs/SAED14/EDK/lib/stdcell_rvt/db_nldm/saed14rvt_tt0p8v25c.db)
+    saed14sram_tt0p8v25c (File: /eda/tech-libs/SAED14/EDK/lib/sram/logic_synth/single/saed14sram_tt0p8v25c.db)
+
+
+Operating Conditions: tt0p8v25c   Library: saed14rvt_tt0p8v25c
+Wire Load Model Mode: top
+
+Design        Wire Load Model            Library
+------------------------------------------------
+ch0re_pipeline         540000            saed14rvt_tt0p8v25c
+
+
+Global Operating Voltage = 0.8  
+Power-specific unit information :
+    Voltage Units = 1V
+    Capacitance Units = 1.000000ff
+    Time Units = 1ns
+    Dynamic Power Units = 1uW    (derived from V,C,T units)
+    Leakage Power Units = 1pW
+
+
+--------------------------------------------------------------------------------
+                                       Switch   Int      Leak     Total
+Hierarchy                              Power    Power    Power    Power    %
+--------------------------------------------------------------------------------
+ch0re_pipeline                           13.807  355.035 4.65e+06  373.488 100.0
+  add_197 (ch0re_pipeline_DW01_add_4)  3.28e-02    0.157 3.65e+04    0.226   0.1
+  add_198 (ch0re_pipeline_DW01_add_3)  6.94e-02    0.382 3.70e+04    0.489   0.1
+  add_200 (ch0re_pipeline_DW01_add_2)  2.17e-02    0.154 3.58e+04    0.211   0.1
+  add_208 (ch0re_pipeline_DW01_add_1)     0.134    0.252 3.47e+04    0.422   0.1
+  add_377 (ch0re_pipeline_DW01_add_0)     0.110    0.501 3.76e+04    0.648   0.2
+  dmem (mem_sync_sp_syn_I_intf_mem_sync_sp_syn_intf__DEPTH_1024_DATA_WIDTH_64)
+                                          0.461   36.835 7.48e+05   38.044  10.2
+  alu (ch0re_alu_I_intf_ch0re_alu_intf__)
+                                          1.642    1.153 3.49e+05    3.145   0.8
+    add_0_root_add_48_ni (ch0re_alu_I_intf_ch0re_alu_intf___DW01_inc_0)
+                                          0.115    0.132 2.47e+04    0.272   0.1
+    sub_1_root_add_48_ni (ch0re_alu_I_intf_ch0re_alu_intf___DW01_sub_0_DW01_sub_1)
+                                       3.70e-02 5.38e-04 3.20e+03 4.07e-02   0.0
+    add_57 (ch0re_alu_I_intf_ch0re_alu_intf___DW01_add_0_DW01_add_5)
+                                       8.01e-02    0.283 3.73e+04    0.401   0.1
+    lt_64 (ch0re_alu_I_intf_ch0re_alu_intf___DW01_cmp2_0)
+                                       6.67e-02 6.33e-02 1.10e+04    0.141   0.0
+    sll_81 (ch0re_alu_I_intf_ch0re_alu_intf___DW01_ash_0)
+                                          0.225    0.226 6.24e+04    0.513   0.1
+    srl_82 (ch0re_alu_I_intf_ch0re_alu_intf___DW_rash_1)
+                                          0.271 9.93e-02 5.14e+04    0.422   0.1
+    sra_83 (ch0re_alu_I_intf_ch0re_alu_intf___DW_rash_0)
+                                          0.256    0.105 5.17e+04    0.413   0.1
+  idec (ch0re_idecoder_I_intf_ch0re_idecoder_intf__)
+                                          0.718    0.348 3.38e+04    1.100   0.3
+  regfile (regfile_2r1w_I_intf_regfile_2r1w_intf__DATA_WIDTH_64)
+                                          5.477  202.570 1.92e+06  209.972  56.2
+  imem (mem_sync_sp_syn_I_intf_mem_sync_sp_syn_intf__DEPTH_2048_DATA_WIDTH_32)
+                                          0.512   44.003 7.42e+05   45.257  12.1
+1

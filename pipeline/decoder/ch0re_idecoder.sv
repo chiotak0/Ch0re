@@ -1,4 +1,5 @@
-`include "ch0re_types.sv"
+// `include "../../ch0re_types.sv"
+// `include "ch0re_types.sv"
 
 interface ch0re_idecoder_intf(
 	input logic clk,
@@ -50,6 +51,17 @@ interface ch0re_idecoder_intf(
 	logic o_pl_stall;
 	logic o_idis;
 
+	/* modport slave(
+		input i_instr, i_br_taken, i_ex_rd, i_ex_iformat,
+			  i_ex_lsu_op, i_ex_wen, i_mem_rd, i_mem_iformat,
+			  i_mem_wen, clk, rst_n,
+		
+		output o_illegal_instr, o_wen, o_rf_raddr1,
+			   o_rf_raddr2, o_rf_waddr, o_imm, o_instr_format,
+			   o_alu_op, o_i64, o_alu_mux1_sel, o_alu_mux2_sel,
+			   o_data_type, o_lsu_op, o_pl_stall, o_idis
+	); */
+
 endinterface: ch0re_idecoder_intf
 
 
@@ -94,7 +106,8 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 			intf.o_instr_format = IFORMAT_NONE;
 			intf.o_alu_op = ALU_SLL;
 			intf.o_lsu_op = LSU_LOAD;
-			intf.o_imm = 64'h0;
+			intf.o_data_type = DTYPE_DOUBLE;
+			intf.o_imm = 'h0;
 			intf.o_wen = 1'b0;
 			dis_ninstr = 1'b1;
 			intf.o_i64 = 1'b0;
@@ -105,8 +118,10 @@ module ch0re_idecoder(ch0re_idecoder_intf intf);
 			intf.o_illegal_instr = 1'b0;
 			intf.o_lsu_op = LSU_NONE;
 			intf.o_data_type = DTYPE_DOUBLE;
+			intf.o_alu_op = ALU_SLL;
 			intf.o_i64 = 1'b0;
 			intf.o_idis = 1'b0;
+			intf.o_imm = 'h0;
 
 			if (!DISNIR & !intf.i_br_taken) begin
 				intf.o_wen = 1'b1;

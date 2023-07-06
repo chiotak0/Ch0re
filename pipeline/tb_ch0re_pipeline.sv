@@ -1,8 +1,8 @@
 `timescale 1ns/1ps
 
-`include "ch0re_types.sv"
-`include "pipeline/pipeline_reg_info.sv"
-`include "debug_prints.sv"
+// `include "ch0re_types.sv"
+`include "pipeline_reg_info.sv"
+// `include "debug_prints.sv"
 
 `define EXMEMR_ALU_OUT   0+:64
 `define EXMEMR_LSU_OP    133+:2
@@ -19,12 +19,11 @@ module tb_ch0re_pipeline();
     logic rst_n;
 
     ch0re_pipeline #(
-        // .IMEM_FILE("../code/example2/fib.imem.dat"),
-        // .DMEM_FILE("../code/example2/fib.dmem.dat"),
-        .IMEM_FILE("../code/compliance_tests/lw.imem.dat"),
-        .DMEM_FILE("../code/compliance_tests/lw.dmem.dat"),
+        // .IMEM_FILE("../code/example1/example1.imem.dat"),
+        // .DMEM_FILE("../code/example1/example1.dmem.dat"),
+        .IMEM_FILE("../code/compliance_tests/lb.imem.dat"),
+        .DMEM_FILE("../code/compliance_tests/lb.dmem.dat"),
         .IMEM_START('h100)
-        // .IMEM_END('h160 - 'h1)
     ) dut (
         .clk(clk),
         .rst_n(rst_n)

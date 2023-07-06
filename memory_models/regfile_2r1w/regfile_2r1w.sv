@@ -19,10 +19,15 @@ interface regfile_2r1w_intf #(
 	logic [DATA_WIDTH - 1 : 0] o_rdata1;
 	logic [DATA_WIDTH - 1 : 0] o_rdata2;
 
+	modport def(
+		input i_raddr1, i_raddr2, i_waddr, i_wdata, i_wen, clk,
+		output o_rdata1, o_rdata2
+	);
+
 endinterface : regfile_2r1w_intf
 
 
-module regfile_2r1w (regfile_2r1w_intf intf);
+module regfile_2r1w (regfile_2r1w_intf.def intf);
 
 	localparam DH = 1;
 

@@ -1,0 +1,61 @@
+ 
+****************************************
+Report : area
+Design : ch0re_pipeline
+Version: U-2022.12
+Date   : Thu Jul  6 18:16:12 2023
+****************************************
+
+Library(s) Used:
+
+    saed14rvt_tt0p8v25c (File: /eda/tech-libs/SAED14/EDK/lib/stdcell_rvt/db_nldm/saed14rvt_tt0p8v25c.db)
+    saed14sram_tt0p8v25c (File: /eda/tech-libs/SAED14/EDK/lib/sram/logic_synth/single/saed14sram_tt0p8v25c.db)
+
+Number of ports:                         2822
+Number of nets:                         20467
+Number of cells:                        16745
+Number of combinational cells:          13787
+Number of sequential cells:              2873
+Number of macros/black boxes:              32
+Number of buf/inv:                       2911
+Number of references:                      82
+
+Combinational area:               4830.142847
+Buf/Inv area:                      658.407608
+Noncombinational area:            2640.334764
+Macro/Black Box area:           282647.000000
+Net Interconnect area:           31694.550026
+
+Total cell area:                290117.477611
+Total area:                     321812.027637
+
+Hierarchical area distribution
+------------------------------
+
+                                  Global cell area               Local cell area
+                                  --------------------  --------------------------------- 
+Hierarchical cell                 Absolute     Percent  Combi-     Noncombi-  Black-
+                                  Total        Total    national   national   boxes        Design
+--------------------------------  -----------  -------  ---------  ---------  -----------  ---------------------------------------------------------------------
+ch0re_pipeline                    290117.4776    100.0   793.0284   729.8472       0.0000  ch0re_pipeline
+add_197                               77.4336      0.0    77.4336     0.0000       0.0000  ch0re_pipeline_DW01_add_4
+add_198                               79.1652      0.0    79.1652     0.0000       0.0000  ch0re_pipeline_DW01_add_3
+add_200                               75.3912      0.0    75.3912     0.0000       0.0000  ch0re_pipeline_DW01_add_2
+add_208                               68.3760      0.0    68.3760     0.0000       0.0000  ch0re_pipeline_DW01_add_1
+add_377                               79.8312      0.0    79.8312     0.0000       0.0000  ch0re_pipeline_DW01_add_0
+alu                                  964.2348      0.3   264.7128     0.0000       0.0000  ch0re_alu_I_intf_ch0re_alu_intf__
+alu/add_0_root_add_48_ni              41.9136      0.0    41.9136     0.0000       0.0000  ch0re_alu_I_intf_ch0re_alu_intf___DW01_inc_0
+alu/add_57                            79.8312      0.0    79.8312     0.0000       0.0000  ch0re_alu_I_intf_ch0re_alu_intf___DW01_add_0_DW01_add_5
+alu/lt_64                             42.3576      0.0    42.3576     0.0000       0.0000  ch0re_alu_I_intf_ch0re_alu_intf___DW01_cmp2_0
+alu/sll_81                           174.4476      0.1   174.4476     0.0000       0.0000  ch0re_alu_I_intf_ch0re_alu_intf___DW01_ash_0
+alu/sra_83                           179.1096      0.1   179.1096     0.0000       0.0000  ch0re_alu_I_intf_ch0re_alu_intf___DW_rash_0
+alu/srl_82                           170.4960      0.1   170.4960     0.0000       0.0000  ch0re_alu_I_intf_ch0re_alu_intf___DW_rash_1
+alu/sub_1_root_add_48_ni              11.3664      0.0    11.3664     0.0000       0.0000  ch0re_alu_I_intf_ch0re_alu_intf___DW01_sub_0_DW01_sub_1
+dmem                              141370.6084     48.7    47.1084     0.0000  141323.5000  mem_sync_sp_syn_I_intf_mem_sync_sp_syn_intf__DEPTH_1024_DATA_WIDTH_64
+idec                                 105.7608      0.0   104.8284     0.9324       0.0000  ch0re_idecoder_I_intf_ch0re_idecoder_intf__
+imem                              141364.6588     48.7    41.1588     0.0000  141323.5000  mem_sync_sp_syn_I_intf_mem_sync_sp_syn_intf__DEPTH_2048_DATA_WIDTH_32
+regfile                             4409.1420      1.5  2499.5869  1909.5552       0.0000  regfile_2r1w_I_intf_regfile_2r1w_intf__DATA_WIDTH_64
+--------------------------------  -----------  -------  ---------  ---------  -----------  ---------------------------------------------------------------------
+Total                                                   4830.1428  2640.3348  282647.0000
+
+1
